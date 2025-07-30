@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ChevronRight, BookOpen, Target, Trophy, Brain, User, MessageSquare, FileText, Sun, Moon, ExternalLink, DollarSign, Clock, Award } from 'lucide-react'
 import { MULTI_CLOUD_CERTIFICATIONS_2025, getCertificationsByProvider, type Certification } from '../lib/certifications'
+import { startNewSession, canSendMessage, recordMessage, canGenerateQuiz, recordQuiz } from '../lib/sessionManager'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -182,6 +183,20 @@ export default function EnhancedPersonalizedCoach() {
   const [selectedProvider, setSelectedProvider] = useState<'All' | 'Microsoft' | 'AWS' | 'GCP'>('All')
   const [hoveredCert, setHoveredCert] = useState<string | null>(null)
   const [suggestedCertification, setSuggestedCertification] = useState<string>('')
+  const [sessionStatus, setSessionStatus] = useState('🔴 None')  // ADD THIS
+
+    // ADD THIS useEffect HERE (after state, before helper functions):
+useEffect(() => {
+  const checkSession = () => {
+    const session = localStorage.getItem('currentSession')
+    console.log('🔍 Checking session:', session)
+    setSessionStatus(session ? '🟢 Active' : '🔴 None')
+  }
+  checkSession()
+  
+  const interval = setInterval(checkSession, 1000)
+  return () => clearInterval(interval)
+}, [])
 
   const getFilteredCertifications = () => {
     const certs = Object.values(MULTI_CLOUD_CERTIFICATIONS_2025)
@@ -567,6 +582,7 @@ export default function EnhancedPersonalizedCoach() {
             }`}>
               Personalized certification training that adapts to your learning style
             </p>
+              <div className="text-xs text-gray-500">Session: {sessionStatus}</div>
           </div>
           
           <button
@@ -1630,3 +1646,167 @@ export default function EnhancedPersonalizedCoach() {
     </div>
   )
 }
+// ==========================================
+// 🛡️ APPEND THIS TO THE BOTTOM OF YOUR page.tsx
+// (Before the final closing brace and export)
+// ==========================================
+
+// 1. ADD THE IMPORT AT THE TOP (just add this one line to your existing imports)
+// import { startNewSession, canSendMessage, recordMessage, canGenerateQuiz, recordQuiz } from '../lib/sessionManager'
+
+// 2. APPEND THESE FUNCTIONS TO THE BOTTOM (before the final return statement)
+
+// 🛡️ Protected wrapper for your existing sendMessage function
+const sendMessageProtected = async () => {
+  if (!input.trim()) return
+
+  // Check session limits first
+  const messageCheck = canSendMessage()
+  if (!messageCheck.allowed) {
+    alert(messageCheck.reason)
+    return
+  }
+
+  // Call your existing sendMessage logic
+  const userMessage: Message = { role: 'user', content: input }
+  const newMessages = [...messages, userMessage]
+  setMessages(newMessages)
+  setInput('')
+  setIsLoading(true)
+
+  try {
+    // Record the message for tracking
+    recordMessage()
+    
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        messages: newMessages,
+        userProfile: userProfile?.communicationStyle 
+      }),
+    })
+
+    if (!response.ok) throw new Error('Failed to get response')
+    const data = await response.json()
+    
+    const aiMessage: Message = { role: 'assistant', content: data.message }
+    setMessages(prev => [...prev, aiMessage])
+
+  } catch (error) {
+    console.error('Error:', error)
+    const errorMessage: Message = { 
+      role: 'assistant', 
+      content: userProfile?.communicationStyle?.tone === 'casual' 
+        ? 'Oops! Something went wrong. Try again?' 
+        : 'I apologize, but I encountered an error. Please try again.'
+    }
+    setMessages(prev => [...prev, errorMessage])
+  } finally {
+    setIsLoading(false)
+  }
+}
+
+// 🛡️ Protected wrapper for your existing generateQuiz function  
+const generateQuizProtected = async (certification: string, domain: string) => {
+  // Check quiz limits first
+  const quizCheck = canGenerateQuiz()
+  if (!quizCheck.allowed) {
+    alert(quizCheck.reason)
+    return
+  }
+
+  setQuizLoading(true)
+  try {
+    // Record the quiz for tracking
+    recordQuiz()
+    
+    const response = await fetch('/api/generate-quiz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        certification,
+        domain,
+        questionCount: 10,
+        userProfile: userProfile?.communicationStyle
+      }),
+    })
+
+    if (!response.ok) throw new Error('Failed to generate quiz')
+    const data = await response.json()
+    
+    setQuizSession({
+      certification,
+      domain,
+      questions: data.questions,
+      currentQuestion: 0,
+      answers: new Array(data.questions.length).fill(null),
+      score: 0,
+      completed: false
+    })
+
+  } catch (error) {
+    console.error('Quiz generation error:', error)
+  } finally {
+    setQuizLoading(false)
+  }
+}
+
+// 🛡️ Initialize session (add this to your existing useEffect or call it separately)
+const initializeSession = () => {
+  console.log('🔍 initializeSession called')
+  const sessionId = `session_${Date.now()}`
+  const session = {
+    sessionId,
+    startTime: Date.now(),
+    lastActivity: Date.now(),
+    messageCount: 0,
+    quizCount: 0
+  }
+  localStorage.setItem('currentSession', JSON.stringify(session))
+  console.log('🟢 Session created:', session)
+  console.log('🔍 localStorage now has:', localStorage.getItem('currentSession'))
+}
+
+// 🛡️ Test functions (you can call these from browser console to test)
+const testSessionLimits = () => {
+  console.log('Message check:', canSendMessage())
+  console.log('Quiz check:', canGenerateQuiz())
+}
+
+// ==========================================
+// 🧪 TESTING INSTRUCTIONS:
+// ==========================================
+// 
+// 1. Add the import line to your imports
+// 2. Append everything above to the bottom of your component (before the return)
+// 3. Test by calling these in browser console:
+//    - testSessionLimits() 
+//    - initializeSession()
+// 
+// 4. OPTIONAL: Replace your existing function calls:
+//    - Change onClick={sendMessage} to onClick={sendMessageProtected}
+//    - Change generateQuiz(cert, domain) to generateQuizProtected(cert, domain)
+// 
+// 5. If something breaks, just remove this appended code!
+//
+// ==========================================
+// 📝 INTEGRATION STEPS (when ready):
+// ==========================================
+//
+// STEP A: Add this one line to your existing useEffect:
+// if (profile.isOnboarded) {
+//   setMessages([{
+//     role: 'assistant', 
+//     content: getWelcomeBackMessage(profile)
+//   }])
+//   initializeSession() // ADD THIS LINE
+// }
+//
+// STEP B: Replace your send button:
+// <button onClick={sendMessage}>  →  <button onClick={sendMessageProtected}>
+//
+// STEP C: Replace your quiz button:  
+// onClick={() => generateQuiz(cert, domain)}  →  onClick={() => generateQuizProtected(cert, domain)}
+//
+// ==========================================
