@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { isCloudRelated, getCurrentCloudTopic, getConversationState } from '../../../lib/cloudFilter'
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -8,8 +9,21 @@ const openai = new OpenAI({
 
 // Base system prompt for the AI study coach
 const getSystemPrompt = (userProfile?: any) => {
-  let basePrompt = `You are an expert cloud certification study coach helping students prepare for Azure, AWS, and GCP certifications. Your core teaching principles:
+  let basePrompt = `You are EXCLUSIVELY a cloud certification study coach. You ONLY respond to questions about:
 
+🎯 ALLOWED TOPICS:
+- Microsoft Azure certifications (AZ-900, AZ-104, AZ-204, SC-200, etc.)
+- AWS certifications (CLF-C02, SAA-C03, DVA-C02, SOA-C02, etc.)  
+- Google Cloud certifications (CDL, ACE, PCA, PDE, etc.)
+- Cloud computing concepts and services
+- Study strategies and exam preparation
+- Cloud career advice and roadmaps
+
+🚫 FORBIDDEN: You do NOT respond to questions about weather, cooking, sports, general programming, politics, current events, or any non-cloud topics.
+
+If someone asks about anything else, respond EXACTLY: "I focus exclusively on cloud certifications. Please ask about Azure, AWS, or Google Cloud topics."
+
+Your core teaching principles:
 1. **Encouraging and Supportive**: Always be positive and motivating
 2. **Socratic Method**: Ask follow-up questions to test understanding  
 3. **Practical Focus**: Use real-world scenarios and examples
@@ -72,8 +86,45 @@ Use a friendly but professional tone. Mix casual and formal elements appropriate
 
 export async function POST(req: NextRequest) {
   try {
+    // 🔒 Environment check - prevents deployment failures
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OpenAI API key not configured')
+      return NextResponse.json(
+        { error: 'AI service temporarily unavailable' },
+        { status: 500 }
+      )
+    }
+
     // Get the messages and user profile from the request
     const { messages, userProfile } = await req.json()
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return NextResponse.json(
+        { error: 'No messages provided' },
+        { status: 400 }
+      )
+    }
+
+    // Get the latest user message
+    const latestMessage = messages[messages.length - 1]
+    
+    // 🎯 CONVERSATION-CONTEXT FILTERING - Only filter conversation starters
+    if (latestMessage.role === 'user') {
+      const isCloudQuestion = isCloudRelated(latestMessage.content);
+      
+      if (!isCloudQuestion) {
+        console.log('🚫 Blocked - Not cloud-related or not in cloud conversation mode');
+        
+        return NextResponse.json({ 
+          message: "I focus exclusively on cloud certifications. Please ask about Azure, AWS, or Google Cloud topics." 
+        });
+      }
+      
+      // ✅ Message is allowed (either cloud topic or in cloud conversation mode)
+      const currentTopic = getCurrentCloudTopic();
+      const conversationState = getConversationState();
+      console.log('✅ Processing message - Topic:', currentTopic, 'State:', conversationState);
+    }
 
     // Prepare messages for OpenAI (add personalized system prompt)
     const systemPrompt = getSystemPrompt(userProfile)
@@ -99,9 +150,9 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('OpenAI API error:', error)
     
-    // Return error response
+    // Return user-friendly error response
     return NextResponse.json(
-      { error: 'Failed to get AI response' },
+      { error: 'I\'m having trouble right now. Please try again in a moment.' },
       { status: 500 }
     )
   }
