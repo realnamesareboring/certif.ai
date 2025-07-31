@@ -184,13 +184,22 @@ export default function EnhancedPersonalizedCoach() {
   const [hoveredCert, setHoveredCert] = useState<string | null>(null)
   const [suggestedCertification, setSuggestedCertification] = useState<string>('')
   const [sessionStatus, setSessionStatus] = useState('🔴 None')  // ADD THIS
+  const [timeLeft, setTimeLeft] = useState(0)
 
     // ADD THIS useEffect HERE (after state, before helper functions):
 useEffect(() => {
   const checkSession = () => {
     const session = localStorage.getItem('currentSession')
-    console.log('🔍 Checking session:', session)
-    setSessionStatus(session ? '🟢 Active' : '🔴 None')
+    if (session) {
+      const { startTime } = JSON.parse(session)
+      const elapsed = Date.now() - startTime
+      const remaining = (45 * 60 * 1000) - elapsed // 45 minutes
+      setTimeLeft(Math.max(0, remaining))
+      setSessionStatus('🟢 Active')
+    } else {
+      setSessionStatus('🔴 None')
+      setTimeLeft(0)
+    }
   }
   checkSession()
   
@@ -370,6 +379,10 @@ useEffect(() => {
         role: 'assistant',
         content: getCompletionMessage(profile)
       }])
+
+      // ADD THIS LINE - Initialize session after onboarding
+      initializeSession()
+
     } finally {
       setIsAnalyzing(false)
     }
@@ -582,7 +595,10 @@ useEffect(() => {
             }`}>
               Personalized certification training that adapts to your learning style
             </p>
-              <div className="text-xs text-gray-500">Session: {sessionStatus}</div>
+              <div className="text-xs text-gray-500">
+                Session: {sessionStatus}
+                {timeLeft > 0 && ` • ${Math.floor(timeLeft/60000)}:${String(Math.floor((timeLeft%60000)/1000)).padStart(2,'0')}`}
+            </div>
           </div>
           
           <button
