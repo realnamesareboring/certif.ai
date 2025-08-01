@@ -281,6 +281,289 @@ GUIDELINES:
 - Keep questions practical and job-relevant
 - Test decision-making abilities in realistic scenarios`
 
+const getMicrosoftLearnPrompt = (certification: string, topicDetails: any, moduleContent: any, questionCount: number) => {
+  if (topicDetails && moduleContent) {
+    return `You are an expert ${certification} instructor creating practice questions based on official Microsoft Learn content.
+
+🎯 SPECIFIC TOPIC FOCUS: 
+Topic: "${topicDetails.topicTitle}"
+Module: "${topicDetails.moduleTitle}"
+Certification: ${certification}
+
+📚 OFFICIAL MICROSOFT LEARN CONTENT:
+${moduleContent.map((point: string) => `• ${point}`).join('\n')}
+
+🎓 REQUIREMENTS:
+1. Questions MUST be scenario-based and practical, not just definitions
+2. Use ONLY official Microsoft terminology and service names
+3. Test understanding and application, not memorization
+4. Include realistic business scenarios that professionals face
+5. Make distractors plausible but clearly wrong to experts
+6. Reference actual Azure/Microsoft services and features
+7. Focus specifically on: "${topicDetails.topicTitle}"
+
+📋 QUESTION STRUCTURE:
+Each question should follow this format:
+{
+  "id": 1,
+  "question": "A detailed scenario-based question about ${topicDetails.topicTitle}...",
+  "options": ["Realistic Option A", "Realistic Option B", "Realistic Option C", "Realistic Option D"],
+  "correct": 0,
+  "explanation": "Clear explanation referencing official Microsoft Learn content and why other options are incorrect",
+  "domain": "${topicDetails.topicTitle}",
+  "moduleContext": "${topicDetails.moduleTitle}"
+}
+
+🏢 SCENARIO EXAMPLES FOR ${topicDetails.topicTitle}:
+- Company migration scenarios
+- Cost optimization decisions
+- Security and compliance requirements
+- Scalability and performance needs
+- Business continuity planning
+
+Generate exactly ${questionCount} unique questions that test practical application of "${topicDetails.topicTitle}" concepts.`
+  }
+  return null
+}
+
+// REPLACE ONLY YOUR POST FUNCTION with this enhanced version
+export async function POST(req: NextRequest) {
+  try {
+    const { 
+      certification, 
+      domain, 
+      questionCount, 
+      topicDetails, 
+      moduleContent,
+      userProfile 
+    } = await req.json()
+
+    if (!certification || !domain || !questionCount) {
+      return NextResponse.json(
+        { error: 'Missing required parameters: certification, domain, questionCount' },
+        { status: 400 }
+      )
+    }
+
+    console.log(`🎯 Generating ${questionCount} questions for: ${topicDetails?.topicTitle || domain}`)
+
+    // NEW: Check if this is a Microsoft Learn topic-specific request
+    const isMicrosoftLearnTopic = topicDetails && moduleContent && (certification.startsWith('AZ-') || certification.startsWith('SC-'))
+    
+    let prompt: string
+    let expertPersona: string
+
+    if (isMicrosoftLearnTopic) {
+      // NEW: Use Microsoft Learn specific prompt
+      prompt = getMicrosoftLearnPrompt(certification, topicDetails, moduleContent, questionCount)!
+      expertPersona = getTopicExpertPersona(certification, topicDetails.topicTitle)
+      console.log(`📚 Using Microsoft Learn content for ${topicDetails.topicTitle}`)
+    } else {
+      // EXISTING: Use your current comprehensive system for broad domains
+      const certContent = CERTIFICATION_CONTENT[certification as keyof typeof CERTIFICATION_CONTENT]
+      if (!certContent) {
+        return NextResponse.json(
+          { error: `Invalid certification: ${certification}. Supported: ${Object.keys(CERTIFICATION_CONTENT).join(', ')}` },
+          { status: 400 }
+        )
+      }
+
+      const domainContent = certContent[domain as keyof typeof certContent]
+      if (!domainContent) {
+        return NextResponse.json(
+          { error: `Invalid domain: ${domain} for certification ${certification}` },
+          { status: 400 }
+        )
+      }
+
+      // Use your existing comprehensive prompt system
+      prompt = `${QUIZ_GENERATION_PROMPT}
+
+CERTIFICATION: ${certification}
+DOMAIN: ${domain}
+TOPICS TO COVER: ${domainContent.topics.join(', ')}
+EXAMPLE SCENARIOS: ${domainContent.scenarios.join('; ')}
+
+Generate exactly ${questionCount} questions for the "${domain}" domain of ${certification}.
+Each question should test different aspects of this domain and reflect real-world scenarios.
+
+Return ONLY a valid JSON object with this structure:
+{
+  "questions": [
+    {
+      "id": 1,
+      "question": "A company is planning a cloud migration...",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct": 0,
+      "explanation": "Detailed explanation with reasoning...",
+      "domain": "${domain}"
+    }
+  ]
+}`
+
+      expertPersona = getExpertPersona(certification)
+      console.log(`📋 Using comprehensive content for ${domain}`)
+    }
+
+    // Call OpenAI API with the appropriate prompt
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        { role: 'system', content: expertPersona },
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: isMicrosoftLearnTopic ? 4000 : 3000,
+      temperature: 0.7,
+      presence_penalty: 0.1,
+      frequency_penalty: 0.3,
+    })
+
+    const aiResponse = completion.choices[0]?.message?.content?.trim()
+    if (!aiResponse) {
+      throw new Error('Empty response from OpenAI')
+    }
+
+    // Parse AI response (keeping your existing parsing logic)
+    let questions
+    try {
+      const cleanResponse = aiResponse.replace(/```json\s*|\s*```/g, '').trim()
+      let parsedResponse
+      try {
+        parsedResponse = JSON.parse(cleanResponse)
+      } catch {
+        // Fallback: try to extract JSON from response
+        const jsonMatch = cleanResponse.match(/\[[\s\S]*\]/)
+        if (jsonMatch) {
+          parsedResponse = JSON.parse(jsonMatch[0])
+        } else {
+          throw new Error('No valid JSON found')
+        }
+      }
+      
+      questions = Array.isArray(parsedResponse) ? parsedResponse : 
+                 (parsedResponse.questions && Array.isArray(parsedResponse.questions)) ? parsedResponse.questions :
+                 [parsedResponse]
+    } catch (parseError) {
+      console.error('❌ JSON parse error:', parseError)
+      console.error('Raw AI response:', aiResponse.substring(0, 500))
+      throw new Error('Invalid JSON response from AI')
+    }
+
+    // Enhanced validation and processing
+    const validatedQuestions = questions
+      .filter(q => {
+        const isValid = q && 
+          q.question && 
+          q.options && 
+          Array.isArray(q.options) && 
+          q.options.length === 4 &&
+          typeof q.correct === 'number' &&
+          q.correct >= 0 && 
+          q.correct < 4
+        
+        if (!isValid) {
+          console.warn('❌ Invalid question filtered out:', q)
+        }
+        return isValid
+      })
+      .slice(0, questionCount)
+      .map((q, index) => ({
+        id: index + 1,
+        question: q.question,
+        options: q.options,
+        correct: q.correct,
+        explanation: q.explanation || 'Explanation not provided',
+        domain: topicDetails?.topicTitle || domain,
+        moduleContext: topicDetails?.moduleTitle || 'General content',
+        certification: certification,
+        topicId: topicDetails?.id || null,
+        generatedAt: new Date().toISOString(),
+        isTopicSpecific: isMicrosoftLearnTopic
+      }))
+
+    if (validatedQuestions.length === 0) {
+      console.log('⚠️ No valid questions generated, falling back to your existing system')
+      const fallbackQuestions = generateFallbackQuestions(certification, domain, questionCount)
+      return NextResponse.json({ 
+        questions: fallbackQuestions,
+        fallback: true,
+        error: 'AI generation failed, using fallback questions'
+      })
+    }
+
+    const response = {
+      questions: validatedQuestions,
+      metadata: {
+        topic: topicDetails?.topicTitle || domain,
+        module: topicDetails?.moduleTitle || null,
+        certification: certification,
+        questionCount: validatedQuestions.length,
+        generatedAt: new Date().toISOString(),
+        isTopicSpecific: isMicrosoftLearnTopic,
+        source: isMicrosoftLearnTopic ? 'Microsoft Learn' : 'Comprehensive Content'
+      }
+    }
+
+    console.log(`✅ Successfully generated ${validatedQuestions.length} ${isMicrosoftLearnTopic ? 'topic-specific' : 'comprehensive'} questions`)
+
+    return NextResponse.json(response)
+
+  } catch (error) {
+    console.error('❌ Quiz generation failed:', error)
+    
+    // Enhanced error handling with your existing fallback system
+    if (error.message?.includes('quota')) {
+      return NextResponse.json(
+        { error: 'API quota exceeded. Please try again later.' },
+        { status: 429 }
+      )
+    }
+
+    if (error.message?.includes('Invalid JSON')) {
+      // Fall back to your existing comprehensive system
+      try {
+        const body = await req.json()
+        const fallbackQuestions = generateFallbackQuestions(
+          body.certification || 'AZ-900',
+          body.domain || 'Cloud Concepts',
+          body.questionCount || 5
+        )
+        return NextResponse.json({ 
+          questions: fallbackQuestions,
+          fallback: true,
+          error: 'AI parsing failed, using fallback questions'
+        })
+      } catch {
+        return NextResponse.json(
+          { error: 'Failed to generate properly formatted questions. Please try again.' },
+          { status: 500 }
+        )
+      }
+    }
+    
+    return NextResponse.json(
+      { error: 'Failed to generate quiz questions. Please try again.' },
+      { status: 500 }
+    )
+  }
+}
+
+// ADD THIS NEW FUNCTION (add to your existing file)
+function getTopicExpertPersona(certification: string, topicTitle: string): string {
+  switch (certification) {
+    case 'AZ-900':
+      return `You are a Microsoft Certified Azure Fundamentals expert and official Microsoft Learn instructor, specializing in "${topicTitle}" from the AZ-900T00 course curriculum.`
+    case 'SC-900':
+      return `You are a Microsoft Certified Security, Compliance, and Identity Fundamentals expert, specializing in "${topicTitle}" from the SC-900T00 course.`
+    case 'AZ-104':
+      return `You are a Microsoft Certified Azure Administrator Associate expert, specializing in "${topicTitle}" from the AZ-104T00 course.`
+    case 'SC-200':
+      return `You are a Microsoft Certified Security Operations Analyst expert, specializing in "${topicTitle}".`
+    default:
+      return `You are an expert ${certification} instructor specializing in "${topicTitle}".`
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { certification, domain, questionCount } = await req.json()

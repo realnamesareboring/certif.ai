@@ -236,6 +236,8 @@ export default function EnhancedPersonalizedCoach() {
   const [onboardingStep, setOnboardingStep] = useState(1)
   const [showAllCertifications, setShowAllCertifications] = useState(false)
   const [selectedTopicDetails, setSelectedTopicDetails] = useState(null)
+  const [availableTopics, setAvailableTopics] = useState([])
+  const [certificationContent, setCertificationContent] = useState(null)
 
     // ADD THIS useEffect HERE (after state, before helper functions):
 useEffect(() => {
@@ -432,6 +434,51 @@ const analyzeStyleAndContinue = async () => {
     setIsAnalyzing(false)
   }
 }
+
+const loadCertificationContent = async (certId: string) => {
+  try {
+    console.log(`🔄 Loading content for ${certId}...`)
+    
+    const response = await fetch('/api/load-certification-content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        certificationId: certId,
+        communicationStyle: userProfile?.communicationStyle 
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to load certification content')
+    }
+    
+    const result = await response.json()
+    console.log('✅ Content loaded successfully:', result)
+
+    setCertificationContent(result.content)
+    return result.content
+    
+  } catch (error) {
+    console.error('❌ Content loading failed:', error)
+    
+    // Fallback: use local certification data
+    const localCert = MULTI_CLOUD_CERTIFICATIONS_2025[certId]
+    if (localCert) {
+      setCertificationContent({
+        domains: localCert.domains,
+        examCode: certId,
+        name: localCert.fullName
+      })
+    }
+    return null
+  }
+}
+
+const handleCertificationClick = async (certId: string) => {
+  setSelectedCertification(certId)
+  await loadCertificationContent(certId)
+}
+
 
 // ADD this new function:
 // REPLACE your entire finalizeCertificationChoice function with this:
@@ -1099,132 +1146,287 @@ Let's start mastering ${certName}! What topic would you like to explore first?`
               </div>
             )}
 
-            {/* Enhanced Quiz Interface */}
-            {activeTab === 'quiz' && (
-              <div className="space-y-6">
-                {!quizSession && (
-                  <div className={`rounded-lg shadow-lg p-6 ${
-                    theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+{/* Enhanced Microsoft Learn Topics Interface */}
+{activeTab === 'quiz' && !quizSession && (
+  <div className="space-y-6">
+    <div className={`text-center p-8 rounded-lg ${
+      theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+    } shadow-lg`}>
+      <Target className="w-16 h-16 mx-auto mb-4 text-blue-500" />
+      <h2 className={`text-2xl font-bold mb-2 ${
+        theme === 'dark' ? 'text-white' : 'text-gray-800'
+      }`}>
+        Microsoft Learn Practice Quiz
+      </h2>
+      <p className={`${
+        theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+      }`}>
+        Select a specific topic from the official Microsoft Learn curriculum
+      </p>
+    </div>
+
+    {/* Certification Selection for Quiz */}
+    {(!selectedCertification || !availableTopics.length) && (
+      <div className={`p-6 rounded-lg shadow-lg ${
+        theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+      }`}>
+        <h3 className={`text-lg font-medium mb-4 ${
+          theme === 'dark' ? 'text-white' : 'text-gray-800'
+        }`}>
+          Choose Your Certification
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Object.values(CERTIFICATIONS).map(cert => (
+            <button
+              key={cert.id}
+              onClick={async () => {
+                setSelectedCertification(cert.id)
+                await loadCertificationContent(cert.id)
+              }}
+              className={`p-4 border-2 rounded-lg text-left transition-all hover:shadow-md ${
+                selectedCertification === cert.id
+                  ? (theme === 'dark' 
+                      ? 'border-blue-400 bg-blue-900/20' 
+                      : 'border-blue-500 bg-blue-50'
+                    )
+                  : (theme === 'dark' 
+                      ? 'border-gray-600 hover:border-blue-400' 
+                      : 'border-gray-200 hover:border-blue-300'
+                    )
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className={`font-bold text-lg ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-800'
+                }`}>
+                  {cert.name}
+                </span>
+                <Award className={`w-5 h-5 ${
+                  theme === 'dark' ? 'text-blue-400' : 'text-blue-500'
+                }`} />
+              </div>
+              <p className={`text-sm ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+              }`}>
+                {cert.fullName}
+              </p>
+            </button>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* Microsoft Learn Topics Display */}
+    {selectedCertification && availableTopics.length > 0 && !selectedTopicDetails && (
+      <div className={`p-6 rounded-lg shadow-lg ${
+        theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+      }`}>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className={`text-xl font-bold ${
+              theme === 'dark' ? 'text-white' : 'text-gray-800'
+            }`}>
+              {CERTIFICATIONS[selectedCertification]?.fullName}
+            </h3>
+            <p className={`text-sm ${
+              theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+            }`}>
+              Select a specific topic from Microsoft Learn modules
+            </p>
+          </div>
+          <ExternalLink 
+            className={`w-5 h-5 ${
+              theme === 'dark' ? 'text-blue-400' : 'text-blue-500'
+            }`} 
+          />
+        </div>
+
+        {/* Group topics by module */}
+        {certificationContent && certificationContent.modules.map(module => (
+          <div key={module.moduleId} className="mb-8">
+            <div className={`p-4 rounded-lg mb-4 ${
+              theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'
+            }`}>
+              <div className="flex items-center justify-between">
+                <h4 className={`font-semibold text-lg ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-800'
+                }`}>
+                  📚 {module.title}
+                </h4>
+                <div className="flex items-center space-x-3 text-sm">
+                  <span className={`flex items-center ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
                   }`}>
-                    <h2 className={`text-2xl font-bold mb-6 flex items-center ${
-                      theme === 'dark' ? 'text-white' : 'text-gray-800'
-                    }`}>
-                      <BookOpen className="w-6 h-6 mr-3 text-blue-600" />
-                      Choose Your Certification
-                    </h2>
-                    
-                    <div className="grid md:grid-cols-2 gap-4 mb-6">
-                      {Object.entries(CERTIFICATIONS).map(([certId, cert]) => (
-                        <div
-                          key={certId}
-                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                            selectedCertification === certId
-                              ? `border-${cert.color}-500 ${
-                                  theme === 'dark' 
-                                    ? `bg-${cert.color}-900/20` 
-                                    : `bg-${cert.color}-50`
-                                }`
-                              : (theme === 'dark' 
-                                  ? 'border-gray-600 hover:border-gray-500' 
-                                  : 'border-gray-200 hover:border-blue-300'
-                                )
-                          }`}
-                          onClick={() => setSelectedCertification(certId)}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <h3 className={`font-bold text-lg ${
-                              theme === 'dark' ? 'text-white' : 'text-gray-800'
-                            }`}>
-                              {cert.name}
-                            </h3>
-                            {suggestedCertification === certId && (
-                              <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-                                Suggested
-                              </span>
-                            )}
-                          </div>
-                          <p className={`text-sm mb-3 ${
-                            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                    <Clock className="w-4 h-4 mr-1" />
+                    {module.estimatedTime}
+                  </span>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    theme === 'dark' 
+                      ? 'bg-blue-900/30 text-blue-300' 
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {module.weight}
+                  </span>
+                </div>
+              </div>
+              <p className={`text-sm mt-2 ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                {module.description}
+              </p>
+            </div>
+
+            {/* Topics within this module */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 ml-4">
+              {module.topics.map(topic => (
+                <button
+                  key={topic.id}
+                  onClick={() => setSelectedTopicDetails({
+                    ...topic,
+                    moduleTitle: module.title,
+                    moduleId: module.moduleId,
+                    estimatedTime: module.estimatedTime
+                  })}
+                  className={`p-4 border rounded-lg text-left transition-all hover:shadow-sm ${
+                    theme === 'dark' 
+                      ? 'border-gray-600 hover:border-blue-400 bg-gray-800/50 hover:bg-gray-700/50' 
+                      : 'border-gray-200 hover:border-blue-300 bg-white hover:bg-blue-50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h5 className={`font-medium mb-2 ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-800'
+                      }`}>
+                        📖 {topic.title}
+                      </h5>
+                      <p className={`text-sm mb-3 ${
+                        theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                      }`}>
+                        {topic.description}
+                      </p>
+                      
+                      {/* Key Points Preview */}
+                      {topic.keyPoints && topic.keyPoints.length > 0 && (
+                        <div className="space-y-1">
+                          <p className={`text-xs font-medium ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                           }`}>
-                            {cert.fullName}
+                            Key concepts:
                           </p>
+                          <ul className={`text-xs space-y-1 ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`}>
+                            {topic.keyPoints.slice(0, 2).map((point, idx) => (
+                              <li key={idx} className="flex items-start">
+                                <span className="mr-1">•</span>
+                                <span>{point}</span>
+                              </li>
+                            ))}
+                            {topic.keyPoints.length > 2 && (
+                              <li className="italic">+{topic.keyPoints.length - 2} more...</li>
+                            )}
+                          </ul>
                         </div>
-                      ))}
+                      )}
                     </div>
-
-                    {selectedCertification && (
-                      <div className="space-y-4">
-                        <h3 className={`text-lg font-semibold ${
-                          theme === 'dark' ? 'text-white' : 'text-gray-800'
-                        }`}>
-                          Select Domain for {CERTIFICATIONS[selectedCertification]?.name}
-                        </h3>
-                        
-                        <div className="grid gap-3">
-                          {CERTIFICATIONS[selectedCertification]?.domains.map((domain, index) => (
-                            <div
-                              key={index}
-                              className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                                selectedDomain === domain.name
-                                  ? (theme === 'dark' 
-                                      ? 'border-blue-400 bg-blue-900/20' 
-                                      : 'border-blue-500 bg-blue-50'
-                                    )
-                                  : (theme === 'dark' 
-                                      ? 'border-gray-600 hover:border-gray-500' 
-                                      : 'border-gray-200 hover:border-blue-300'
-                                    )
-                              }`}
-                              onClick={() => setSelectedDomain(domain.name)}
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <h4 className={`font-medium ${
-                                    theme === 'dark' ? 'text-white' : 'text-gray-800'
-                                  }`}>
-                                    {domain.name}
-                                  </h4>
-                                  <p className={`text-sm ${
-                                    theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-                                  }`}>
-                                    {domain.description}
-                                  </p>
-                                </div>
-                                <span className={`text-sm font-medium ml-4 ${
-                                  theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                                }`}>
-                                  {domain.weight}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {selectedDomain && (
-                          <div className="text-center pt-4">
-                            <button
-                              onClick={() => generateQuiz(selectedCertification, selectedDomain)}
-                              disabled={quizLoading}
-                              className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-8 py-3 rounded-lg font-medium text-lg transition-colors flex items-center mx-auto"
-                            >
-                              {quizLoading ? (
-                                <>
-                                  <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                                  Generating Quiz...
-                                </>
-                              ) : (
-                                <>
-                                  <Target className="w-5 h-5 mr-2" />
-                                  Generate Practice Quiz
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    <ChevronRight className={`w-5 h-5 mt-1 ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
+                    }`} />
                   </div>
-                )}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
+    {/* Selected Topic Quiz Generation */}
+    {selectedTopicDetails && (
+      <div className={`p-6 rounded-lg shadow-lg ${
+        theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+      }`}>
+        <div className="text-center">
+          <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium mb-4 ${
+            theme === 'dark' 
+              ? 'bg-blue-900/30 text-blue-300' 
+              : 'bg-blue-100 text-blue-700'
+          }`}>
+            {selectedTopicDetails.moduleTitle}
+          </div>
+          
+          <h3 className={`text-xl font-bold mb-2 ${
+            theme === 'dark' ? 'text-white' : 'text-gray-800'
+          }`}>
+            📖 {selectedTopicDetails.title}
+          </h3>
+          
+          <p className={`mb-4 ${
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+          }`}>
+            {selectedTopicDetails.description}
+          </p>
+
+          {/* Topic Key Points */}
+          {selectedTopicDetails.keyPoints && (
+            <div className={`text-left p-4 rounded-lg mb-6 ${
+              theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'
+            }`}>
+              <p className={`text-sm font-medium mb-2 ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+              }`}>
+                This quiz will cover:
+              </p>
+              <ul className={`text-sm space-y-1 ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                {selectedTopicDetails.keyPoints.map((point, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="mr-2">✓</span>
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="flex justify-center space-x-4">
+            <button
+              onClick={() => setSelectedTopicDetails(null)}
+              className={`px-6 py-2 rounded-lg transition-colors ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+              }`}
+            >
+              ← Back to Topics
+            </button>
+            
+            <button
+              onClick={() => generateTopicQuiz(selectedCertification, selectedTopicDetails)}
+              disabled={quizLoading}
+              className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-8 py-2 rounded-lg font-medium transition-colors flex items-center"
+            >
+              {quizLoading ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Target className="w-4 h-4 mr-2" />
+                  Generate 10 Questions
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+)}
 
                 {/* Quiz Session Display */}
                 {quizSession && !quizSession.completed && (
@@ -1346,8 +1548,6 @@ Let's start mastering ${certName}! What topic would you like to explore first?`
                 )}
               </div>
             )}
-          </div>
-        )}
 
         {/* Career Roadmap Section - Motivational */}
         {userProfile?.isOnboarded && (
@@ -2053,6 +2253,83 @@ const generateQuizProtected = async (certification: string, domain: string) => {
 
   } catch (error) {
     console.error('Quiz generation error:', error)
+  } finally {
+    setQuizLoading(false)
+  }
+}
+
+const loadCertificationContent = async (certificationId: string) => {
+  try {
+    const response = await fetch('/api/load-certification-content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ certificationId }),
+    })
+
+    if (!response.ok) throw new Error('Failed to load content')
+    const result = await response.json()
+    
+    setCertificationContent(result.content)
+    
+    // Extract all topics from all modules
+    const allTopics = result.content.modules.flatMap(module => 
+      module.topics.map(topic => ({
+        ...topic,
+        moduleTitle: module.title,
+        moduleId: module.moduleId,
+        estimatedTime: module.estimatedTime,
+        weight: module.weight
+      }))
+    )
+    
+    setAvailableTopics(allTopics)
+    console.log(`✅ Loaded ${allTopics.length} topics for ${certificationId}`)
+    
+  } catch (error) {
+    console.error('❌ Failed to load certification content:', error)
+  }
+}
+
+// ADD this new function to generate topic-specific quizzes
+const generateTopicQuiz = async (certification: string, topicDetails: any) => {
+  setQuizLoading(true)
+  try {
+    console.log(`🎯 Generating quiz for topic: ${topicDetails.title}`)
+    
+    const response = await fetch('/api/generate-quiz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        certification,
+        domain: topicDetails.title, // Using topic title as domain for compatibility
+        questionCount: 10,
+        topicDetails: {
+          topicTitle: topicDetails.title,
+          moduleTitle: topicDetails.moduleTitle,
+          topicId: topicDetails.id,
+          moduleId: topicDetails.moduleId
+        },
+        moduleContent: topicDetails.keyPoints || []
+      }),
+    })
+
+    if (!response.ok) throw new Error('Failed to generate topic quiz')
+    const data = await response.json()
+    
+    setQuizSession({
+      certification,
+      domain: `${topicDetails.moduleTitle} → ${topicDetails.title}`,
+      questions: data.questions,
+      currentQuestion: 0,
+      answers: new Array(data.questions.length).fill(null),
+      score: 0,
+      completed: false
+    })
+
+    console.log(`✅ Generated ${data.questions.length} questions for ${topicDetails.title}`)
+
+  } catch (error) {
+    console.error('❌ Topic quiz generation failed:', error)
   } finally {
     setQuizLoading(false)
   }
