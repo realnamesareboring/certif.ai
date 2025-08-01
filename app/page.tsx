@@ -166,6 +166,54 @@ const CERTIFICATIONS: Record<string, Certification> = {
   }
 }
 
+// POPULAR CERTIFICATIONS - Add this constant BEFORE your component starts
+const POPULAR_CERTIFICATIONS = [
+  {
+    id: 'SC-900',
+    name: 'SC-900',
+    fullName: 'Security, Compliance, and Identity Fundamentals',
+    level: 'Fundamentals',
+    provider: 'Microsoft',
+    color: 'bg-red-500',
+    description: 'Security fundamentals and Microsoft security services',
+    averageSalary: '$65,000 - $85,000',
+    icon: 'M'
+  },
+  {
+    id: 'AZ-900',
+    name: 'AZ-900', 
+    fullName: 'Azure Fundamentals',
+    level: 'Fundamentals',
+    provider: 'Microsoft',
+    color: 'bg-blue-500',
+    description: 'Cloud concepts and core Azure services',
+    averageSalary: '$60,000 - $80,000',
+    icon: 'M'
+  },
+  {
+    id: 'AZ-104',
+    name: 'AZ-104',
+    fullName: 'Azure Administrator Associate', 
+    level: 'Associate',
+    provider: 'Microsoft',
+    color: 'bg-blue-600',
+    description: 'Azure administration and infrastructure management',
+    averageSalary: '$90,000 - $120,000',
+    icon: 'M'
+  },
+  {
+    id: 'CLF-C02',
+    name: 'AWS CLF-C02',
+    fullName: 'AWS Cloud Practitioner',
+    level: 'Foundational', 
+    provider: 'AWS',
+    color: 'bg-orange-500',
+    description: 'AWS cloud concepts and services fundamentals',
+    averageSalary: '$65,000 - $85,000',
+    icon: 'A'
+  }
+]
+
 export default function EnhancedPersonalizedCoach() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
@@ -185,6 +233,9 @@ export default function EnhancedPersonalizedCoach() {
   const [suggestedCertification, setSuggestedCertification] = useState<string>('')
   const [sessionStatus, setSessionStatus] = useState('🔴 None')  // ADD THIS
   const [timeLeft, setTimeLeft] = useState(0)
+  const [onboardingStep, setOnboardingStep] = useState(1)
+  const [showAllCertifications, setShowAllCertifications] = useState(false)
+  const [selectedTopicDetails, setSelectedTopicDetails] = useState(null)
 
     // ADD THIS useEffect HERE (after state, before helper functions):
 useEffect(() => {
@@ -347,47 +398,172 @@ useEffect(() => {
     setActiveTab(tab)
   }
 
-  const analyzeStyle = async () => {
-    if (!textSample.trim() || textSample.length < 15) {
-      alert('Please provide at least 15 characters of your natural writing.')
-      return
+// Replace your existing analyzeStyle function with this enhanced version:
+
+const analyzeStyleAndContinue = async () => {
+  if (!textSample || textSample.length < 15) return
+
+  setIsAnalyzing(true)
+  try {
+    const response = await fetch('/api/analyze-style', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ textSample }),
+    })
+
+    if (!response.ok) throw new Error('Analysis failed')
+    const result = await response.json()
+
+    // Store the communication style temporarily
+    setUserProfile(prev => ({
+      ...prev,
+      communicationStyle: result.style,
+      rawText: textSample
+    }))
+
+    // Move to certification selection
+    setOnboardingStep(2)
+    
+  } catch (error) {
+    console.error('Style analysis failed:', error)
+    // Still continue to cert selection with defaults
+    setOnboardingStep(2)
+  } finally {
+    setIsAnalyzing(false)
+  }
+}
+
+// ADD this new function:
+// REPLACE your entire finalizeCertificationChoice function with this:
+
+const finalizeCertificationChoice = async () => {
+  setOnboardingStep(3)
+  
+  try {
+    // Load official Microsoft Learn content for the selected certification
+    console.log(`🔄 Loading content for ${selectedCertification}...`)
+    
+    const response = await fetch('/api/load-certification-content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        certificationId: selectedCertification,
+        communicationStyle: userProfile?.communicationStyle 
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to load certification content')
+    }
+    
+    const result = await response.json()
+    console.log('✅ Content loaded successfully:', result.message)
+
+    // Complete onboarding with certification-specific profile + official content
+    const finalProfile = {
+      name: 'User',
+      targetCertification: selectedCertification,
+      certificationContent: result.content, // Store the official content
+      communicationStyle: userProfile?.communicationStyle,
+      rawText: textSample,
+      isOnboarded: true
     }
 
-    setIsAnalyzing(true)
-    try {
-      const response = await fetch('/api/analyze-style', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ textSample }),
-      })
+    setUserProfile(finalProfile)
+    localStorage.setItem('userProfile', JSON.stringify(finalProfile))
+    setIsOnboarding(false)
 
-      if (!response.ok) throw new Error('Analysis failed')
-      const result = await response.json()
+    // Start with certification-specific welcome message using OFFICIAL content
+    setMessages([{
+      role: 'assistant',
+      content: getCertificationWelcomeMessage(finalProfile, result.content)
+    }])
 
-      const profile: UserProfile = {
-        name: 'User',
-        communicationStyle: result.style,
-        rawText: textSample,
-        isOnboarded: true
-      }
-
-      setUserProfile(profile)
-      localStorage.setItem('userProfile', JSON.stringify(profile))
-      setIsOnboarding(false)
-
-      setMessages([{
-        role: 'assistant',
-        content: getCompletionMessage(profile)
-      }])
-
-      // ADD THIS LINE - Initialize session after onboarding
+    // Initialize session
+    if (typeof initializeSession === 'function') {
       initializeSession()
-
-    } finally {
-      setIsAnalyzing(false)
     }
+
+  } catch (error) {
+    console.error('❌ Content loading failed:', error)
+    
+    // Still complete onboarding but without official content
+    const fallbackProfile = {
+      name: 'User',
+      targetCertification: selectedCertification,
+      communicationStyle: userProfile?.communicationStyle,
+      rawText: textSample,
+      isOnboarded: true
+    }
+
+    setUserProfile(fallbackProfile)
+    localStorage.setItem('userProfile', JSON.stringify(fallbackProfile))
+    setIsOnboarding(false)
+
+    // Generic welcome message as fallback
+    setMessages([{
+      role: 'assistant',
+      content: `Welcome! I'll help you study for ${selectedCertification}. What would you like to learn about?`
+    }])
+  }
+}
+
+// ADD this new function:
+// REPLACE your getCertificationWelcomeMessage function with this:
+
+const getCertificationWelcomeMessage = (profile, officialContent) => {
+  const certName = profile.targetCertification
+  const style = profile.communicationStyle
+  
+  // Get the CORRECT topics from official Microsoft Learn content
+  const getOfficialTopics = () => {
+    if (!officialContent?.domains) {
+      return ["• General certification topics", "• Practice questions", "• Study guidance"]
+    }
+    
+    return officialContent.domains.slice(0, 3).map(domain => 
+      `• ${domain.name} (${domain.weight})`
+    )
   }
 
+  const topics = getOfficialTopics()
+  
+  if (style?.tone === 'casual') {
+    return `Yo! Welcome to your ${certName} study squad! 🚀
+
+I've loaded all the official Microsoft Learn content for ${certName}, so we're gonna crush this exam together!
+
+I'm ur dedicated ${certName} tutor now - ask me anything about:
+${topics.join('\n')}
+
+Ready to get started? What part of ${certName} do u wanna dive into first?`
+  } else if (style?.tone === 'formal') {
+    return `Welcome to your dedicated ${certName} preparation program.
+
+I have successfully integrated the complete Microsoft Learn curriculum for ${certName}, including:
+
+• Official exam objectives and domains
+• Key terminology and concepts  
+• Practice scenarios and examples
+• Study guidance and tips
+
+Your ${certName} exam covers these main areas:
+${topics.join('\n')}
+
+I will serve as your specialized ${certName} instructor, adapting all explanations to your preferred learning style.
+
+How would you like to begin your ${certName} preparation?`
+  } else {
+    return `Welcome to your personalized ${certName} study experience!
+
+I've loaded the complete Microsoft Learn content for ${certName} and I'm ready to be your dedicated tutor. Every explanation will be tailored to your communication style.
+
+The ${certName} exam focuses on:
+${topics.join('\n')}
+
+Let's start mastering ${certName}! What topic would you like to explore first?`
+  }
+}
   const getWelcomeBackMessage = (profile: UserProfile) => {
     if (profile.communicationStyle.tone === 'casual') {
       return `Yo ${profile.name}! Welcome back! 🚀\n\nI remember ur style - keeping it ${profile.communicationStyle.tone} and ${profile.communicationStyle.complexity}. Ready to crush some more certs?`
@@ -614,62 +790,176 @@ useEffect(() => {
           </button>
         </div>
 
-        {/* Onboarding Flow */}
-        {isOnboarding && (
-          <div className={`max-w-2xl mx-auto rounded-lg shadow-lg p-8 ${
-            theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-          }`}>
-            <div className="text-center mb-8">
-              <User className={`w-16 h-16 mx-auto mb-4 ${
-                theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-              }`} />
-              <h2 className={`text-2xl font-bold mb-4 ${
-                theme === 'dark' ? 'text-white' : 'text-gray-800'
-              }`}>
-                Let's Personalize Your Learning Experience
-              </h2>
-              <p className={`${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-              }`}>
-                Paste a sample of your natural writing (email, message, etc.) so I can adapt to your communication style:
-              </p>
-            </div>
+// REPLACE IT WITH this enhanced version:
+{/* Enhanced Onboarding Flow */}
+{isOnboarding && (
+  <div className={`max-w-2xl mx-auto rounded-lg shadow-lg p-8 ${
+    theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+  }`}>
+    
+    {/* Progress Indicator */}
+    <div className="flex items-center justify-center mb-8">
+      <div className="flex items-center">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+          onboardingStep >= 1 
+            ? 'bg-blue-500 text-white' 
+            : 'bg-gray-200 text-gray-600'
+        }`}>1</div>
+        <div className={`w-16 h-1 ${onboardingStep >= 2 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+          onboardingStep >= 2 
+            ? 'bg-blue-500 text-white' 
+            : 'bg-gray-200 text-gray-600'
+        }`}>2</div>
+        <div className={`w-16 h-1 ${onboardingStep >= 3 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+          onboardingStep >= 3 
+            ? 'bg-blue-500 text-white' 
+            : 'bg-gray-200 text-gray-600'
+        }`}>3</div>
+      </div>
+    </div>
 
-            <div className="space-y-4">
-              <textarea
-                value={textSample}
-                onChange={(e) => setTextSample(e.target.value)}
-                placeholder="Paste any text you've written naturally - an email, message, or note. This helps me understand how you communicate so I can match your style..."
-                className={`w-full h-32 p-4 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  theme === 'dark' 
-                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
-                rows={4}
-              />
-              
-              <div className="flex justify-center space-x-4">
-                <button
-                  onClick={analyzeStyle}
-                  disabled={isAnalyzing || textSample.length < 15}
-                  className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-8 py-3 rounded-lg font-medium transition-colors flex items-center"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                      Analyzing Your Style...
-                    </>
-                  ) : (
-                    <>
-                      <Brain className="w-4 h-4 mr-2" />
-                      Analyze My Style
-                    </>
-                  )}
-                </button>
+    {/* Step 1: Communication Style Analysis */}
+    {onboardingStep === 1 && (
+      <>
+        <div className="text-center mb-8">
+          <User className={`w-16 h-16 mx-auto mb-4 ${
+            theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+          }`} />
+          <h2 className={`text-2xl font-bold mb-4 ${
+            theme === 'dark' ? 'text-white' : 'text-gray-800'
+          }`}>
+            Let's Personalize Your Learning
+          </h2>
+          <p className={`${
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+          }`}>
+            Paste a sample of your natural writing so I can adapt to your communication style:
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <textarea
+            value={textSample}
+            onChange={(e) => setTextSample(e.target.value)}
+            placeholder="Paste any text you've written naturally - an email, message, or note..."
+            className={`w-full h-32 p-4 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              theme === 'dark' 
+                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            rows={4}
+          />
+          
+          <div className="flex justify-center space-x-4">
+            <button
+              onClick={analyzeStyleAndContinue}
+              disabled={isAnalyzing || textSample.length < 15}
+              className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-8 py-3 rounded-lg font-medium transition-colors flex items-center"
+            >
+              {isAnalyzing ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Analyzing Style...
+                </>
+              ) : (
+                'Continue →'
+              )}
+            </button>
+          </div>
+        </div>
+      </>
+    )}
+
+    {/* Step 2: Certification Selection */}
+    {onboardingStep === 2 && (
+      <>
+        <div className="text-center mb-8">
+          <Target className={`w-16 h-16 mx-auto mb-4 ${
+            theme === 'dark' ? 'text-green-400' : 'text-green-600'
+          }`} />
+          <h2 className={`text-2xl font-bold mb-4 ${
+            theme === 'dark' ? 'text-white' : 'text-gray-800'
+          }`}>
+            Which Certification Are You Studying For?
+          </h2>
+          <p className={`${
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+          }`}>
+            I'll become your dedicated tutor for this specific exam:
+          </p>
+        </div>
+
+        {/* Popular Certifications Grid */}
+        <div className="grid md:grid-cols-2 gap-4 mb-6">
+          {POPULAR_CERTIFICATIONS.map((cert) => (
+            <div
+              key={cert.id}
+              onClick={() => setSelectedCertification(cert.id)}
+              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                selectedCertification === cert.id
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 hover:border-blue-300 dark:border-gray-600 dark:hover:border-blue-400'
+              }`}
+            >
+              <div className="flex items-center mb-3">
+                <div className={`w-10 h-10 ${cert.color} rounded-lg flex items-center justify-center text-white font-bold text-sm mr-3`}>
+                  {cert.icon}
+                </div>
+                <div>
+                  <h3 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                    {cert.name}
+                  </h3>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                    {cert.level}
+                  </p>
+                </div>
+              </div>
+              <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                {cert.description}
+              </p>
+              <div className="text-xs text-green-600 font-medium">
+                💰 {cert.averageSalary}
               </div>
             </div>
+          ))}
+        </div>
+
+        {/* Continue Button */}
+        {selectedCertification && (
+          <div className="flex justify-center mt-6">
+            <button
+              onClick={finalizeCertificationChoice}
+              className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg font-medium transition-colors"
+            >
+              Start Learning {selectedCertification} →
+            </button>
           </div>
         )}
+      </>
+    )}
+
+    {/* Step 3: Loading Official Content */}
+    {onboardingStep === 3 && (
+      <>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <h2 className={`text-2xl font-bold mb-4 ${
+            theme === 'dark' ? 'text-white' : 'text-gray-800'
+          }`}>
+            Loading {selectedCertification} Content...
+          </h2>
+          <p className={`${
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+          }`}>
+            Fetching the latest materials from Microsoft Learn...
+          </p>
+        </div>
+      </>
+    )}
+  </div>
+)}
 
         {/* Main Interface */}
         {userProfile?.isOnboarded && (
