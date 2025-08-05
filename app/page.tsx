@@ -217,6 +217,7 @@ const POPULAR_CERTIFICATIONS = [
 export default function EnhancedPersonalizedCoach() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [certificationContent, setCertificationContent] = useState(null)
   const [isOnboarding, setIsOnboarding] = useState(false)
   const [textSample, setTextSample] = useState('')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -237,7 +238,8 @@ export default function EnhancedPersonalizedCoach() {
   const [showAllCertifications, setShowAllCertifications] = useState(false)
   const [selectedTopicDetails, setSelectedTopicDetails] = useState(null)
   const [availableTopics, setAvailableTopics] = useState([])
-  const [certificationContent, setCertificationContent] = useState(null)
+
+  console.log('setCertificationContent exists:', typeof setCertificationContent)
 
     // ADD THIS useEffect HERE (after state, before helper functions):
 useEffect(() => {
@@ -311,6 +313,50 @@ useEffect(() => {
     return colorMap[color as keyof typeof colorMap] || colorMap.blue
   }
 
+  const loadCertificationContent = async (certId: string) => {
+  try {
+    console.log(`🔄 Loading content for ${certId}...`)
+    
+    const response = await fetch('/api/load-certification-content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        certificationId: certId,
+        communicationStyle: userProfile?.communicationStyle 
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to load certification content')
+    }
+    
+    const result = await response.json()
+    console.log('✅ Content loaded successfully:', result)
+
+    setCertificationContent(result.content)
+    return result.content
+    
+  } catch (error) {
+    console.error('❌ Content loading failed:', error)
+    
+    // Fallback: use local certification data
+    const localCert = MULTI_CLOUD_CERTIFICATIONS_2025[certId]
+    if (localCert) {
+      setCertificationContent({
+        domains: localCert.domains,
+        examCode: certId,
+        name: localCert.fullName
+      })
+    }
+    return null
+  }
+}
+
+const handleCertificationClick = async (certId: string) => {
+  setSelectedCertification(certId)
+  await loadCertificationContent(certId)
+}
+  
   // Load user profile and theme on component mount
   useEffect(() => {
     const savedProfile = localStorage.getItem('userProfile')
@@ -435,49 +481,49 @@ const analyzeStyleAndContinue = async () => {
   }
 }
 
-const loadCertificationContent = async (certId: string) => {
-  try {
-    console.log(`🔄 Loading content for ${certId}...`)
+// const loadCertificationContent = async (certId: string) => {
+//   try {
+//     console.log(`🔄 Loading content for ${certId}...`)
     
-    const response = await fetch('/api/load-certification-content', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        certificationId: certId,
-        communicationStyle: userProfile?.communicationStyle 
-      }),
-    })
+//     const response = await fetch('/api/load-certification-content', {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify({ 
+//         certificationId: certId,
+//         communicationStyle: userProfile?.communicationStyle 
+//       }),
+//     })
 
-    if (!response.ok) {
-      throw new Error('Failed to load certification content')
-    }
+//     if (!response.ok) {
+//       throw new Error('Failed to load certification content')
+//     }
     
-    const result = await response.json()
-    console.log('✅ Content loaded successfully:', result)
+//     const result = await response.json()
+//     console.log('✅ Content loaded successfully:', result)
 
-    setCertificationContent(result.content)
-    return result.content
+//     setCertificationContent(result.content)
+//     return result.content
     
-  } catch (error) {
-    console.error('❌ Content loading failed:', error)
+//   } catch (error) {
+//     console.error('❌ Content loading failed:', error)
     
-    // Fallback: use local certification data
-    const localCert = MULTI_CLOUD_CERTIFICATIONS_2025[certId]
-    if (localCert) {
-      setCertificationContent({
-        domains: localCert.domains,
-        examCode: certId,
-        name: localCert.fullName
-      })
-    }
-    return null
-  }
-}
+//     // Fallback: use local certification data
+//     const localCert = MULTI_CLOUD_CERTIFICATIONS_2025[certId]
+//     if (localCert) {
+//       setCertificationContent({
+//         domains: localCert.domains,
+//         examCode: certId,
+//         name: localCert.fullName
+//       })
+//     }
+//     return null
+//   }
+// }
 
-const handleCertificationClick = async (certId: string) => {
-  setSelectedCertification(certId)
-  await loadCertificationContent(certId)
-}
+// const handleCertificationClick = async (certId: string) => {
+//   setSelectedCertification(certId)
+//   await loadCertificationContent(certId)
+// }
 
 
 // ADD this new function:
@@ -1875,6 +1921,7 @@ Let's start mastering ${certName}! What topic would you like to explore first?`
                       }`}
                       onMouseEnter={() => setHoveredCert(cert.id)}
                       onMouseLeave={() => setHoveredCert(null)}
+                      onClick={() => handleCertificationClick(cert.id)}
                     >
                       {/* Basic Info */}
                       <div className="flex items-start justify-between mb-3">
@@ -2258,37 +2305,37 @@ const generateQuizProtected = async (certification: string, domain: string) => {
   }
 }
 
-const loadCertificationContent = async (certificationId: string) => {
-  try {
-    const response = await fetch('/api/load-certification-content', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ certificationId }),
-    })
+// const loadCertificationContent = async (certificationId: string) => {
+//   try {
+//     const response = await fetch('/api/load-certification-content', {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify({ certificationId }),
+//     })
 
-    if (!response.ok) throw new Error('Failed to load content')
-    const result = await response.json()
+//     if (!response.ok) throw new Error('Failed to load content')
+//     const result = await response.json()
     
-    setCertificationContent(result.content)
+//     setCertificationContent(result.content)
     
-    // Extract all topics from all modules
-    const allTopics = result.content.modules.flatMap(module => 
-      module.topics.map(topic => ({
-        ...topic,
-        moduleTitle: module.title,
-        moduleId: module.moduleId,
-        estimatedTime: module.estimatedTime,
-        weight: module.weight
-      }))
-    )
+//     // Extract all topics from all modules
+//     const allTopics = result.content.modules.flatMap(module => 
+//       module.topics.map(topic => ({
+//         ...topic,
+//         moduleTitle: module.title,
+//         moduleId: module.moduleId,
+//         estimatedTime: module.estimatedTime,
+//         weight: module.weight
+//       }))
+//     )
     
-    setAvailableTopics(allTopics)
-    console.log(`✅ Loaded ${allTopics.length} topics for ${certificationId}`)
+//     setAvailableTopics(allTopics)
+//     console.log(`✅ Loaded ${allTopics.length} topics for ${certificationId}`)
     
-  } catch (error) {
-    console.error('❌ Failed to load certification content:', error)
-  }
-}
+//   } catch (error) {
+//     console.error('❌ Failed to load certification content:', error)
+//   }
+// }
 
 // ADD this new function to generate topic-specific quizzes
 const generateTopicQuiz = async (certification: string, topicDetails: any) => {
@@ -2355,6 +2402,11 @@ const initializeSession = () => {
 const testSessionLimits = () => {
   console.log('Message check:', canSendMessage())
   console.log('Quiz check:', canGenerateQuiz())
+}
+
+  return (
+    <div>...</div>
+  )
 }
 
 // ==========================================
