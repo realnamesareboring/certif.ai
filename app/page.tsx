@@ -217,7 +217,6 @@ const POPULAR_CERTIFICATIONS = [
 export default function EnhancedPersonalizedCoach() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
-  const [certificationContent, setCertificationContent] = useState(null)
   const [isOnboarding, setIsOnboarding] = useState(false)
   const [textSample, setTextSample] = useState('')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -238,12 +237,7 @@ export default function EnhancedPersonalizedCoach() {
   const [showAllCertifications, setShowAllCertifications] = useState(false)
   const [selectedTopicDetails, setSelectedTopicDetails] = useState(null)
   const [availableTopics, setAvailableTopics] = useState([])
-<<<<<<< HEAD
   const [certificationContent, setCertificationContent] = useState(null)
-=======
-
-  console.log('setCertificationContent exists:', typeof setCertificationContent)
->>>>>>> ddf602f0db3ff8a7f2f9877709d4c95bced99f80
 
     // ADD THIS useEffect HERE (after state, before helper functions):
 useEffect(() => {
@@ -317,50 +311,6 @@ useEffect(() => {
     return colorMap[color as keyof typeof colorMap] || colorMap.blue
   }
 
-  const loadCertificationContent = async (certId: string) => {
-  try {
-    console.log(`🔄 Loading content for ${certId}...`)
-    
-    const response = await fetch('/api/load-certification-content', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        certificationId: certId,
-        communicationStyle: userProfile?.communicationStyle 
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to load certification content')
-    }
-    
-    const result = await response.json()
-    console.log('✅ Content loaded successfully:', result)
-
-    setCertificationContent(result.content)
-    return result.content
-    
-  } catch (error) {
-    console.error('❌ Content loading failed:', error)
-    
-    // Fallback: use local certification data
-    const localCert = MULTI_CLOUD_CERTIFICATIONS_2025[certId]
-    if (localCert) {
-      setCertificationContent({
-        domains: localCert.domains,
-        examCode: certId,
-        name: localCert.fullName
-      })
-    }
-    return null
-  }
-}
-
-const handleCertificationClick = async (certId: string) => {
-  setSelectedCertification(certId)
-  await loadCertificationContent(certId)
-}
-  
   // Load user profile and theme on component mount
   useEffect(() => {
     const savedProfile = localStorage.getItem('userProfile')
@@ -518,51 +468,6 @@ const analyzeStyleAndContinue = async () => {
     setIsAnalyzing(false)
   }
 }
-
-// const loadCertificationContent = async (certId: string) => {
-//   try {
-//     console.log(`🔄 Loading content for ${certId}...`)
-    
-//     const response = await fetch('/api/load-certification-content', {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ 
-//         certificationId: certId,
-//         communicationStyle: userProfile?.communicationStyle 
-//       }),
-//     })
-
-//     if (!response.ok) {
-//       throw new Error('Failed to load certification content')
-//     }
-    
-//     const result = await response.json()
-//     console.log('✅ Content loaded successfully:', result)
-
-//     setCertificationContent(result.content)
-//     return result.content
-    
-//   } catch (error) {
-//     console.error('❌ Content loading failed:', error)
-    
-//     // Fallback: use local certification data
-//     const localCert = MULTI_CLOUD_CERTIFICATIONS_2025[certId]
-//     if (localCert) {
-//       setCertificationContent({
-//         domains: localCert.domains,
-//         examCode: certId,
-//         name: localCert.fullName
-//       })
-//     }
-//     return null
-//   }
-// }
-
-// const handleCertificationClick = async (certId: string) => {
-//   setSelectedCertification(certId)
-//   await loadCertificationContent(certId)
-// }
-
 
 // ADD this new function:
 // REPLACE your entire finalizeCertificationChoice function with this:
@@ -1959,7 +1864,6 @@ Let's start mastering ${certName}! What topic would you like to explore first?`
                       }`}
                       onMouseEnter={() => setHoveredCert(cert.id)}
                       onMouseLeave={() => setHoveredCert(null)}
-                      onClick={() => handleCertificationClick(cert.id)}
                     >
                       {/* Basic Info */}
                       <div className="flex items-start justify-between mb-3">
@@ -2343,41 +2247,6 @@ const generateQuizProtected = async (certification: string, domain: string) => {
   }
 }
 
-<<<<<<< HEAD
-=======
-// const loadCertificationContent = async (certificationId: string) => {
-//   try {
-//     const response = await fetch('/api/load-certification-content', {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ certificationId }),
-//     })
-
-//     if (!response.ok) throw new Error('Failed to load content')
-//     const result = await response.json()
-    
-//     setCertificationContent(result.content)
-    
-//     // Extract all topics from all modules
-//     const allTopics = result.content.modules.flatMap(module => 
-//       module.topics.map(topic => ({
-//         ...topic,
-//         moduleTitle: module.title,
-//         moduleId: module.moduleId,
-//         estimatedTime: module.estimatedTime,
-//         weight: module.weight
-//       }))
-//     )
-    
-//     setAvailableTopics(allTopics)
-//     console.log(`✅ Loaded ${allTopics.length} topics for ${certificationId}`)
-    
-//   } catch (error) {
-//     console.error('❌ Failed to load certification content:', error)
-//   }
-// }
-
->>>>>>> ddf602f0db3ff8a7f2f9877709d4c95bced99f80
 // ADD this new function to generate topic-specific quizzes
 const generateTopicQuiz = async (certification: string, topicDetails: any) => {
   setQuizLoading(true)
@@ -2444,48 +2313,3 @@ const testSessionLimits = () => {
   console.log('Message check:', canSendMessage())
   console.log('Quiz check:', canGenerateQuiz())
 }
-<<<<<<< HEAD
-=======
-
-  return (
-    <div>...</div>
-  )
-}
-
-// ==========================================
-// 🧪 TESTING INSTRUCTIONS:
-// ==========================================
-// 
-// 1. Add the import line to your imports
-// 2. Append everything above to the bottom of your component (before the return)
-// 3. Test by calling these in browser console:
-//    - testSessionLimits() 
-//    - initializeSession()
-// 
-// 4. OPTIONAL: Replace your existing function calls:
-//    - Change onClick={sendMessage} to onClick={sendMessageProtected}
-//    - Change generateQuiz(cert, domain) to generateQuizProtected(cert, domain)
-// 
-// 5. If something breaks, just remove this appended code!
-//
-// ==========================================
-// 📝 INTEGRATION STEPS (when ready):
-// ==========================================
-//
-// STEP A: Add this one line to your existing useEffect:
-// if (profile.isOnboarded) {
-//   setMessages([{
-//     role: 'assistant', 
-//     content: getWelcomeBackMessage(profile)
-//   }])
-//   initializeSession() // ADD THIS LINE
-// }
-//
-// STEP B: Replace your send button:
-// <button onClick={sendMessage}>  →  <button onClick={sendMessageProtected}>
-//
-// STEP C: Replace your quiz button:  
-// onClick={() => generateQuiz(cert, domain)}  →  onClick={() => generateQuizProtected(cert, domain)}
-//
-// ==========================================
->>>>>>> ddf602f0db3ff8a7f2f9877709d4c95bced99f80
