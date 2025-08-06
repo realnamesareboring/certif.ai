@@ -564,145 +564,145 @@ function getTopicExpertPersona(certification: string, topicTitle: string): strin
   }
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const { certification, domain, questionCount } = await req.json()
+// export async function POST(req: NextRequest) {
+//   try {
+//     const { certification, domain, questionCount } = await req.json()
 
-    if (!certification || !domain || !questionCount) {
-      return NextResponse.json(
-        { error: 'Missing required parameters: certification, domain, questionCount' },
-        { status: 400 }
-      )
-    }
+//     if (!certification || !domain || !questionCount) {
+//       return NextResponse.json(
+//         { error: 'Missing required parameters: certification, domain, questionCount' },
+//         { status: 400 }
+//       )
+//     }
 
-    // Get domain-specific content
-    const certContent = CERTIFICATION_CONTENT[certification as keyof typeof CERTIFICATION_CONTENT]
-    if (!certContent) {
-      return NextResponse.json(
-        { error: `Invalid certification: ${certification}. Supported: ${Object.keys(CERTIFICATION_CONTENT).join(', ')}` },
-        { status: 400 }
-      )
-    }
+//     // Get domain-specific content
+//     const certContent = CERTIFICATION_CONTENT[certification as keyof typeof CERTIFICATION_CONTENT]
+//     if (!certContent) {
+//       return NextResponse.json(
+//         { error: `Invalid certification: ${certification}. Supported: ${Object.keys(CERTIFICATION_CONTENT).join(', ')}` },
+//         { status: 400 }
+//       )
+//     }
 
-    const domainContent = certContent[domain as keyof typeof certContent]
-    if (!domainContent) {
-      return NextResponse.json(
-        { error: `Invalid domain: ${domain} for certification ${certification}` },
-        { status: 400 }
-      )
-    }
+//     const domainContent = certContent[domain as keyof typeof certContent]
+//     if (!domainContent) {
+//       return NextResponse.json(
+//         { error: `Invalid domain: ${domain} for certification ${certification}` },
+//         { status: 400 }
+//       )
+//     }
 
-    // Create certification-specific expert persona
-    const getExpertPersona = (cert: string) => {
-      switch (cert) {
-        case 'AZ-900':
-          return 'You are a Microsoft Certified Azure Fundamentals expert specializing in cloud concepts and Azure services.'
-        case 'SC-200':
-          return 'You are a Microsoft Certified Security Operations Analyst expert specializing in threat detection, investigation, and response.'
-        case 'AWS-SAA':
-          return 'You are an AWS Certified Solutions Architect Associate expert specializing in designing resilient and high-performing architectures.'
-        case 'GCP-CDL':
-          return 'You are a Google Cloud Digital Leader expert specializing in digital transformation and cloud innovation.'
-        default:
-          return 'You are a cloud certification expert.'
-      }
-    }
+//     // Create certification-specific expert persona
+//     const getExpertPersona = (cert: string) => {
+//       switch (cert) {
+//         case 'AZ-900':
+//           return 'You are a Microsoft Certified Azure Fundamentals expert specializing in cloud concepts and Azure services.'
+//         case 'SC-200':
+//           return 'You are a Microsoft Certified Security Operations Analyst expert specializing in threat detection, investigation, and response.'
+//         case 'AWS-SAA':
+//           return 'You are an AWS Certified Solutions Architect Associate expert specializing in designing resilient and high-performing architectures.'
+//         case 'GCP-CDL':
+//           return 'You are a Google Cloud Digital Leader expert specializing in digital transformation and cloud innovation.'
+//         default:
+//           return 'You are a cloud certification expert.'
+//       }
+//     }
 
-    // Create enhanced prompt with domain context
-    const enhancedPrompt = `
-${QUIZ_GENERATION_PROMPT}
+//     // Create enhanced prompt with domain context
+//     const enhancedPrompt = `
+// ${QUIZ_GENERATION_PROMPT}
 
-CERTIFICATION: ${certification}
-DOMAIN: ${domain}
-TOPICS TO COVER: ${domainContent.topics.join(', ')}
-EXAMPLE SCENARIOS: ${domainContent.scenarios.join('; ')}
+// CERTIFICATION: ${certification}
+// DOMAIN: ${domain}
+// TOPICS TO COVER: ${domainContent.topics.join(', ')}
+// EXAMPLE SCENARIOS: ${domainContent.scenarios.join('; ')}
 
-Generate exactly ${questionCount} questions for the "${domain}" domain of ${certification}.
-Each question should test different aspects of this domain and reflect real-world scenarios.
+// Generate exactly ${questionCount} questions for the "${domain}" domain of ${certification}.
+// Each question should test different aspects of this domain and reflect real-world scenarios.
 
-Return ONLY a valid JSON object with this structure:
-{
-  "questions": [
-    {
-      "id": 1,
-      "question": "A company is planning a cloud migration...",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct": 0,
-      "explanation": "Detailed explanation with reasoning...",
-      "domain": "${domain}"
-    }
-  ]
-}
-`
+// Return ONLY a valid JSON object with this structure:
+// {
+//   "questions": [
+//     {
+//       "id": 1,
+//       "question": "A company is planning a cloud migration...",
+//       "options": ["Option A", "Option B", "Option C", "Option D"],
+//       "correct": 0,
+//       "explanation": "Detailed explanation with reasoning...",
+//       "domain": "${domain}"
+//     }
+//   ]
+// }
+// `
 
-    // Call OpenAI API with enhanced prompt
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        { role: 'system', content: getExpertPersona(certification) },
-        { role: 'user', content: enhancedPrompt }
-      ],
-      max_tokens: 3000,
-      temperature: 0.7,
-    })
+//     // Call OpenAI API with enhanced prompt
+//     const completion = await openai.chat.completions.create({
+//       model: 'gpt-3.5-turbo',
+//       messages: [
+//         { role: 'system', content: getExpertPersona(certification) },
+//         { role: 'user', content: enhancedPrompt }
+//       ],
+//       max_tokens: 3000,
+//       temperature: 0.7,
+//     })
 
-    const aiResponse = completion.choices[0]?.message?.content
-    if (!aiResponse) {
-      throw new Error('No response from AI')
-    }
+//     const aiResponse = completion.choices[0]?.message?.content
+//     if (!aiResponse) {
+//       throw new Error('No response from AI')
+//     }
 
-    // Parse the JSON response
-    let quizData
-    try {
-      // Clean up the response (remove any markdown formatting)
-      const cleanResponse = aiResponse.replace(/```json\s*|\s*```/g, '').trim()
-      quizData = JSON.parse(cleanResponse)
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', aiResponse)
-      throw new Error('Invalid JSON response from AI')
-    }
+//     // Parse the JSON response
+//     let quizData
+//     try {
+//       // Clean up the response (remove any markdown formatting)
+//       const cleanResponse = aiResponse.replace(/```json\s*|\s*```/g, '').trim()
+//       quizData = JSON.parse(cleanResponse)
+//     } catch (parseError) {
+//       console.error('Failed to parse AI response:', aiResponse)
+//       throw new Error('Invalid JSON response from AI')
+//     }
 
-    // Validate the response structure
-    if (!quizData.questions || !Array.isArray(quizData.questions)) {
-      throw new Error('Invalid quiz data structure')
-    }
+//     // Validate the response structure
+//     if (!quizData.questions || !Array.isArray(quizData.questions)) {
+//       throw new Error('Invalid quiz data structure')
+//     }
 
-    // Add additional metadata to questions
-    const enhancedQuestions = quizData.questions.map((q: any, index: number) => ({
-      ...q,
-      id: index + 1,
-      domain: domain,
-      certification: certification,
-      generatedAt: new Date().toISOString()
-    }))
+//     // Add additional metadata to questions
+//     const enhancedQuestions = quizData.questions.map((q: any, index: number) => ({
+//       ...q,
+//       id: index + 1,
+//       domain: domain,
+//       certification: certification,
+//       generatedAt: new Date().toISOString()
+//     }))
 
-    return NextResponse.json({ 
-      questions: enhancedQuestions,
-      metadata: {
-        certification,
-        domain,
-        questionCount: enhancedQuestions.length,
-        generatedAt: new Date().toISOString()
-      }
-    })
+//     return NextResponse.json({ 
+//       questions: enhancedQuestions,
+//       metadata: {
+//         certification,
+//         domain,
+//         questionCount: enhancedQuestions.length,
+//         generatedAt: new Date().toISOString()
+//       }
+//     })
 
-  } catch (error) {
-    console.error('Quiz generation error:', error)
+//   } catch (error) {
+//     console.error('Quiz generation error:', error)
     
-    // Return fallback questions if AI fails
-    const fallbackQuestions = generateFallbackQuestions(
-      req.body?.certification || 'AZ-900',
-      req.body?.domain || 'Cloud Concepts',
-      req.body?.questionCount || 5
-    )
+//     // Return fallback questions if AI fails
+//     const fallbackQuestions = generateFallbackQuestions(
+//       req.body?.certification || 'AZ-900',
+//       req.body?.domain || 'Cloud Concepts',
+//       req.body?.questionCount || 5
+//     )
 
-    return NextResponse.json({ 
-      questions: fallbackQuestions,
-      fallback: true,
-      error: 'AI generation failed, using fallback questions'
-    })
-  }
-}
+//     return NextResponse.json({ 
+//       questions: fallbackQuestions,
+//       fallback: true,
+//       error: 'AI generation failed, using fallback questions'
+//     })
+//   }
+// }
 
 // Enhanced fallback questions with multi-certification support
 function generateFallbackQuestions(certification: string, domain: string, count: number) {
