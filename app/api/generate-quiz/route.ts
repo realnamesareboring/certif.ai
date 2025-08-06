@@ -424,30 +424,123 @@ Return ONLY a valid JSON object with this structure:
     }
 
     // Parse AI response (keeping your existing parsing logic)
-    let questions
-    try {
-      const cleanResponse = aiResponse.replace(/```json\s*|\s*```/g, '').trim()
-      let parsedResponse
-      try {
-        parsedResponse = JSON.parse(cleanResponse)
-      } catch {
-        // Fallback: try to extract JSON from response
-        const jsonMatch = cleanResponse.match(/\[[\s\S]*\]/)
-        if (jsonMatch) {
-          parsedResponse = JSON.parse(jsonMatch[0])
+let questions
+try {
+  const cleanResponse = aiResponse.replace(/```json\s*|\s*```/g, '').trim()
+  let parsedResponse
+  
+  try {
+    // First try: Direct JSON parse
+    parsedResponse = JSON.parse(cleanResponse)
+  } catch {
+    // Second try: Extract JSON array
+    const jsonArrayMatch = cleanResponse.match(/\[[\s\S]*\]/)
+    if (jsonArrayMatch) {
+      parsedResponse = JSON.parse(jsonArrayMatch[0])
+    } else {
+      // Third try: Extract individual JSON objects and combine them
+      console.log('📝 Attempting to parse individual JSON objects...')
+      
+      // Remove leading text like "Here are 10 unique questions:"
+      let cleanedText = cleanResponse.replace(/^.*?(?=\{)/s, '').trim()
+      
+      // Extract all JSON objects using a more flexible regex
+      const jsonObjectMatches = cleanedText.match(/\{[^}]*"id"[^}]*"question"[^}]*"options"[^}]*"correct"[^}]*"explanation"[^}]*\}/g)
+      
+      if (jsonObjectMatches) {
+        console.log(`📋 Found ${jsonObjectMatches.length} JSON objects`)
+        const questions = []
+        
+        for (let i = 0; i < jsonObjectMatches.length; i++) {
+          try {
+            // Clean up each JSON object
+            let jsonStr = jsonObjectMatches[i]
+            
+            // Fix common JSON issues
+            jsonStr = jsonStr
+              .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
+              .replace(/([{,]\s*)(\w+):/g, '$1"$2":') // Add quotes to unquoted keys
+              .trim()
+            
+            const questionObj = JSON.parse(jsonStr)
+            if (questionObj.question && questionObj.options && Array.isArray(questionObj.options)) {
+              questions.push(questionObj)
+            }
+          } catch (parseErr) {
+            console.warn(`⚠️ Failed to parse question ${i + 1}:`, parseErr.message)
+          }
+        }
+        
+        if (questions.length > 0) {
+          parsedResponse = { questions }
+          console.log(`✅ Successfully parsed ${questions.length} questions from mixed format`)
         } else {
-          throw new Error('No valid JSON found')
+          throw new Error('No valid questions found in response')
+        }
+      } else {
+        // Fourth try: Use regex to find any JSON-like structures
+        console.log('📝 Attempting advanced JSON extraction...')
+        
+        // Look for question patterns
+        const questionPattern = /"question":\s*"([^"]+)"/g
+        const optionsPattern = /"options":\s*\[(.*?)\]/g
+        const correctPattern = /"correct":\s*(\d+)/g
+        const explanationPattern = /"explanation":\s*"([^"]+)"/g
+        
+        const questions = []
+        const questionMatches = [...cleanResponse.matchAll(questionPattern)]
+        const optionsMatches = [...cleanResponse.matchAll(optionsPattern)]
+        const correctMatches = [...cleanResponse.matchAll(correctPattern)]
+        const explanationMatches = [...cleanResponse.matchAll(explanationPattern)]
+        
+        const minLength = Math.min(
+          questionMatches.length, 
+          optionsMatches.length, 
+          correctMatches.length
+        )
+        
+        for (let i = 0; i < minLength; i++) {
+          try {
+            const optionsStr = optionsMatches[i][1]
+            const options = optionsStr.split(',').map(opt => 
+              opt.trim().replace(/^["']|["']$/g, '')
+            )
+            
+            if (options.length === 4) {
+              questions.push({
+                id: i + 1,
+                question: questionMatches[i][1],
+                options: options,
+                correct: parseInt(correctMatches[i][1]),
+                explanation: explanationMatches[i] ? explanationMatches[i][1] : 'Explanation not provided'
+              })
+            }
+          } catch (err) {
+            console.warn(`⚠️ Failed to construct question ${i + 1}:`, err.message)
+          }
+        }
+        
+        if (questions.length > 0) {
+          parsedResponse = { questions }
+          console.log(`✅ Successfully extracted ${questions.length} questions using pattern matching`)
+        } else {
+          throw new Error('No valid JSON found in AI response')
         }
       }
-      
-      questions = Array.isArray(parsedResponse) ? parsedResponse : 
-                 (parsedResponse.questions && Array.isArray(parsedResponse.questions)) ? parsedResponse.questions :
-                 [parsedResponse]
-    } catch (parseError) {
-      console.error('❌ JSON parse error:', parseError)
-      console.error('Raw AI response:', aiResponse.substring(0, 500))
-      throw new Error('Invalid JSON response from AI')
     }
+  }
+  
+  // Extract questions array
+  questions = Array.isArray(parsedResponse) ? 
+             parsedResponse : 
+             (parsedResponse.questions && Array.isArray(parsedResponse.questions)) ? parsedResponse.questions :
+             [parsedResponse]
+             
+} catch (parseError) {
+  console.error('❌ JSON parse error:', parseError)
+  console.error('Raw AI response:', aiResponse.substring(0, 500))
+  throw new Error('Invalid JSON response from AI')
+}
 
     // Enhanced validation and processing
     const validatedQuestions = questions
