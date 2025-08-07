@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { ChevronRight, BookOpen, Target, Trophy, Brain, User, MessageSquare, FileText, Sun, Moon, ExternalLink, DollarSign, Clock, Award } from 'lucide-react'
 import { MULTI_CLOUD_CERTIFICATIONS_2025, getCertificationsByProvider, type Certification } from '../lib/certifications'
 import { startNewSession, canSendMessage, recordMessage, canGenerateQuiz, recordQuiz } from '../lib/sessionManager'
+import { QuizResults } from '../components/QuizResults'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -1719,37 +1720,21 @@ const testSessionLimits = () => {
                   </div>
                 )}
 
-                {/* Quiz Results */}
+                {/* Enhanced Quiz Results */}
                 {quizSession && quizSession.completed && (
-                  <div className={`rounded-lg shadow-lg p-6 ${
-                    theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-                  }`}>
-                    <div className="text-center mb-6">
-                      <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-                      <h2 className={`text-2xl font-bold mb-2 ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-800'
-                      }`}>
-                        Quiz Complete!
-                      </h2>
-                      <div className="text-3xl font-bold text-blue-600 mb-2">
-                        {quizSession.score} / {quizSession.questions.length}
-                      </div>
-                      <div className={`${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-                      }`}>
-                        {Math.round((quizSession.score / quizSession.questions.length) * 100)}% Correct
-                      </div>
-                    </div>
-
-                    <div className="text-center">
-                      <button
-                        onClick={resetQuiz}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium"
-                      >
-                        Start New Quiz
-                      </button>
-                    </div>
-                  </div>
+                  <QuizResults 
+                    quizSession={quizSession}
+                    onResetQuiz={resetQuiz}
+                    onRetakeQuiz={() => {
+                      // Optional: implement retake functionality
+                      if (selectedTopicDetails) {
+                        generateTopicQuiz(selectedCertification, selectedTopicDetails)
+                      } else {
+                        generateQuizProtected(quizSession.certification, quizSession.domain)
+                      }
+                    }}
+                    theme={theme}
+                  />
                 )}
               </div>
             )}
