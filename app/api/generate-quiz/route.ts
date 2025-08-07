@@ -1,4 +1,4 @@
-// app/api/generate-quiz/route.ts
+// app/api/generate-quiz/route.ts - ENHANCED VERSION
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
@@ -6,231 +6,230 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-// 🎯 STANDARDIZED QUIZ GENERATION PROMPT
-const QUIZ_GENERATION_PROMPT = `You are a cloud certification expert. Generate quiz questions that mirror real certification exams.
+// 🎯 ENHANCED MICROSOFT LEARN CONTENT MAPPING
+const AZ900_TOPIC_SPECIFICATIONS = {
+  // Module 1: Cloud Concepts
+  "What is cloud computing?": {
+    focus: "Cloud computing fundamentals, characteristics, and benefits vs traditional IT",
+    keyTerms: ["on-demand self-service", "broad network access", "resource pooling", "rapid elasticity", "measured service"],
+    scenarios: ["Cost comparison", "Scalability requirements", "Global access needs"],
+    examStyle: "Definition-based and benefit comparison questions"
+  },
+  "Shared responsibility model": {
+    focus: "Division of responsibilities between cloud provider and customer across service types",
+    keyTerms: ["IaaS responsibilities", "PaaS responsibilities", "SaaS responsibilities", "customer vs Microsoft responsibilities"],
+    scenarios: ["Security incident response", "Compliance requirements", "Data protection responsibilities"],
+    examStyle: "Responsibility matrix and security scenario questions"
+  },
+  "Cloud deployment models": {
+    focus: "Public, private, hybrid, and multi-cloud deployment strategies",
+    keyTerms: ["public cloud", "private cloud", "hybrid cloud", "multi-cloud", "community cloud"],
+    scenarios: ["Regulatory compliance", "Cost optimization", "Performance requirements"],
+    examStyle: "Deployment strategy selection based on business requirements"
+  },
+  "Cloud service types (IaaS, PaaS, SaaS)": {
+    focus: "Service model characteristics, examples, and appropriate use cases",
+    keyTerms: ["Infrastructure as a Service", "Platform as a Service", "Software as a Service", "control levels", "management responsibilities"],
+    scenarios: ["Application development needs", "Infrastructure management", "Software delivery models"],
+    examStyle: "Service type identification and use case matching"
+  },
 
-CRITICAL: Return ONLY this JSON structure with NO other text:
+  // Module 2: Azure Architecture and Services  
+  "Azure global infrastructure": {
+    focus: "Regions, availability zones, region pairs, and global presence",
+    keyTerms: ["Azure regions", "availability zones", "region pairs", "geographies", "sovereign clouds"],
+    scenarios: ["Disaster recovery planning", "Latency optimization", "Compliance requirements"],
+    examStyle: "Infrastructure planning and availability design questions"
+  },
+  "Azure compute services": {
+    focus: "Virtual machines, App Service, Functions, Container Instances, AKS",
+    keyTerms: ["Azure Virtual Machines", "Azure App Service", "Azure Functions", "Azure Container Instances", "Azure Kubernetes Service"],
+    scenarios: ["Application hosting decisions", "Serverless vs container choices", "Scalability requirements"],
+    examStyle: "Service selection based on application requirements"
+  },
+  "Azure networking services": {
+    focus: "Virtual networks, VPN Gateway, ExpressRoute, DNS, load balancing",
+    keyTerms: ["Virtual Network", "VPN Gateway", "ExpressRoute", "Azure DNS", "Load Balancer", "Application Gateway"],
+    scenarios: ["Hybrid connectivity", "Network security", "Traffic distribution"],
+    examStyle: "Network architecture and connectivity solution questions"
+  },
+  "Azure storage services": {
+    focus: "Blob, Files, Queues, Tables, and storage tiers",
+    keyTerms: ["Blob storage", "Azure Files", "Queue storage", "Table storage", "storage tiers", "replication options"],
+    scenarios: ["Data archival", "Application storage needs", "Performance requirements"],
+    examStyle: "Storage solution selection and configuration questions"
+  },
+  "Azure database services": {
+    focus: "SQL Database, Cosmos DB, MySQL, PostgreSQL, analytics services",
+    keyTerms: ["Azure SQL Database", "Azure Cosmos DB", "Azure Database for MySQL", "Azure Database for PostgreSQL", "Azure Synapse Analytics"],
+    scenarios: ["Database migration", "Global distribution", "Analytics requirements"],
+    examStyle: "Database service selection and scalability questions"
+  },
 
+  // Module 3: Management and Governance
+  "Cost management in Azure": {
+    focus: "Pricing models, cost optimization, and financial management tools",
+    keyTerms: ["pay-as-you-go", "reserved instances", "Azure Pricing Calculator", "TCO Calculator", "Cost Management"],
+    scenarios: ["Budget planning", "Cost optimization", "Financial forecasting"],
+    examStyle: "Cost calculation and optimization strategy questions"
+  },
+  "Features and tools for governance and compliance": {
+    focus: "Azure Policy, Blueprints, compliance offerings, and governance tools",
+    keyTerms: ["Azure Policy", "Azure Blueprints", "compliance offerings", "resource locks", "management groups"],
+    scenarios: ["Regulatory compliance", "Resource governance", "Standards enforcement"],
+    examStyle: "Governance implementation and compliance questions"
+  },
+  "Tools for managing and deploying Azure resources": {
+    focus: "Portal, CLI, PowerShell, ARM templates, and mobile app",
+    keyTerms: ["Azure Portal", "Azure CLI", "Azure PowerShell", "ARM templates", "Azure mobile app"],
+    scenarios: ["Automation requirements", "Deployment consistency", "Management preferences"],
+    examStyle: "Tool selection and automation scenario questions"
+  },
+  "Monitoring tools in Azure": {
+    focus: "Azure Monitor, Service Health, Advisor, and Application Insights",
+    keyTerms: ["Azure Monitor", "Azure Service Health", "Azure Advisor", "Application Insights", "Log Analytics"],
+    scenarios: ["Performance monitoring", "Health tracking", "Optimization recommendations"],
+    examStyle: "Monitoring solution design and troubleshooting questions"
+  }
+}
+
+// 🎯 DYNAMIC PROMPT GENERATOR BASED ON MICROSOFT LEARN CONTENT
+function generateTopicSpecificPrompt(topic: string, certification: string, questionCount: number) {
+  const topicSpec = AZ900_TOPIC_SPECIFICATIONS[topic] || {
+    focus: "General Azure and cloud concepts",
+    keyTerms: ["Azure", "cloud computing", "Microsoft Azure"],
+    scenarios: ["Basic cloud scenarios"],
+    examStyle: "Fundamental knowledge questions"
+  }
+
+  return `You are a Microsoft Azure certification expert creating ${certification} exam questions.
+
+TOPIC FOCUS: ${topic}
+LEARNING OBJECTIVES: ${topicSpec.focus}
+
+KEY TERMS TO INCLUDE: ${topicSpec.keyTerms.join(", ")}
+SCENARIO TYPES: ${topicSpec.scenarios.join(", ")}
+QUESTION STYLE: ${topicSpec.examStyle}
+
+EXAM REQUIREMENTS:
+- Questions must be specific to "${topic}" - NOT generic Azure questions
+- Use real-world scenarios that test understanding of this specific topic
+- Include terminology and concepts specific to this learning objective
+- Mirror actual ${certification} exam difficulty and style
+- Focus on practical application, not just definitions
+
+QUESTION TYPES TO INCLUDE:
+- Scenario-based: "A company needs to..." situations
+- Comparison: "Which option best addresses..." questions  
+- Implementation: "To achieve X, you should..." questions
+- Troubleshooting: "When Y occurs, the cause is..." questions
+
+CRITICAL: Generate questions that someone studying ONLY "${topic}" would expect to see.
+Do NOT generate generic Azure questions that could apply to any section.
+
+Return exactly ${questionCount} questions in this JSON format:
 {
   "questions": [
     {
       "id": 1,
-      "question": "Question text here",
+      "question": "Scenario-based question specific to ${topic}",
       "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
       "correct": 0,
-      "explanation": "Brief explanation"
+      "explanation": "Detailed explanation with topic-specific reasoning"
+    }
+  ]
+}`
+}
+
+// 🎯 TOPIC-SPECIFIC QUESTION VALIDATION
+function validateTopicSpecificity(questions: any[], topic: string): any[] {
+  const topicSpec = AZ900_TOPIC_SPECIFICATIONS[topic]
+  if (!topicSpec) return questions
+
+  // Score questions based on topic relevance
+  return questions.map(q => {
+    let relevanceScore = 0
+    const questionText = (q.question + ' ' + q.options.join(' ')).toLowerCase()
+    
+    // Check for topic-specific terms
+    topicSpec.keyTerms.forEach(term => {
+      if (questionText.includes(term.toLowerCase())) {
+        relevanceScore += 2
+      }
+    })
+    
+    // Prefer scenario-based questions
+    if (questionText.includes('company') || questionText.includes('organization') || questionText.includes('scenario')) {
+      relevanceScore += 1
+    }
+    
+    return {
+      ...q,
+      relevanceScore,
+      topicAlignment: relevanceScore >= 2 ? 'high' : relevanceScore >= 1 ? 'medium' : 'low'
+    }
+  }).sort((a, b) => b.relevanceScore - a.relevanceScore)
+}
+
+// 🎯 ENHANCED FALLBACK QUESTIONS BY TOPIC
+const TOPIC_SPECIFIC_FALLBACKS = {
+  "What is cloud computing?": [
+    {
+      question: "A startup wants to avoid large upfront infrastructure costs and scale resources based on demand. Which cloud computing characteristic best addresses this need?",
+      options: ["A) Broad network access", "B) Rapid elasticity", "C) Resource pooling", "D) Measured service"],
+      correct: 1,
+      explanation: "Rapid elasticity allows automatic scaling of resources up or down based on demand, avoiding upfront costs."
+    },
+    {
+      question: "An organization wants to access applications from any device with internet connectivity. Which cloud characteristic enables this capability?",
+      options: ["A) On-demand self-service", "B) Broad network access", "C) Resource pooling", "D) Measured service"],
+      correct: 1,
+      explanation: "Broad network access ensures services are available over the network through standard mechanisms."
+    }
+  ],
+  "Monitoring tools in Azure": [
+    {
+      question: "A company needs to track the performance of their Azure web application and identify slow-performing pages. Which Azure service should they implement?",
+      options: ["A) Azure Monitor", "B) Azure Service Health", "C) Application Insights", "D) Azure Advisor"],
+      correct: 2,
+      explanation: "Application Insights provides detailed application performance monitoring and can identify performance bottlenecks."
+    },
+    {
+      question: "An administrator wants to receive recommendations for optimizing Azure resource costs and performance. Which tool provides these capabilities?",
+      options: ["A) Azure Monitor", "B) Azure Advisor", "C) Azure Service Health", "D) Log Analytics"],
+      correct: 1,
+      explanation: "Azure Advisor provides personalized recommendations for cost optimization, performance, and security."
+    }
+  ],
+  "Benefits of using cloud services": [
+    {
+      question: "A company experiences seasonal traffic spikes and wants to automatically adjust computing resources. Which cloud benefit addresses this requirement?",
+      options: ["A) High availability", "B) Scalability", "C) Security", "D) Predictability"],
+      correct: 1,
+      explanation: "Scalability allows resources to be increased or decreased automatically based on demand."
+    },
+    {
+      question: "An organization wants to ensure their services remain available even if one datacenter fails. Which cloud benefit provides this capability?",
+      options: ["A) Scalability", "B) Elasticity", "C) High availability", "D) Agility"],
+      correct: 2,
+      explanation: "High availability ensures services continue operating even when individual components or datacenters fail."
     }
   ]
 }
 
-RULES:
-- No newlines inside question text
-- No quotes inside options or explanations  
-- Use simple punctuation only
-- Keep explanations under 100 characters
-- Return exactly the requested number of questions`
-
-// 🎯 UNIFIED MODEL CONFIGURATION
-const MODEL_CONFIG = {
-  model: 'gpt-4o-mini', // Consistent, cost-effective model
-  max_tokens: 3500,
-  temperature: 0.7,
-  presence_penalty: 0.1,
-  frequency_penalty: 0.3,
-}
-
-// 🛠️ ENHANCED JSON PARSING WITH BETTER ERROR RECOVERY
-function parseAIResponse(aiResponse: string): any {
-  if (!aiResponse?.trim()) {
-    throw new Error('Empty AI response')
-  }
-
-  console.log('🔍 Full AI Response:')
-  console.log(aiResponse) // <-- This will show us exactly what's wrong
-
-  // Step 1: Clean the response
-  let cleanResponse = aiResponse
-    .replace(/```json\s*|\s*```/g, '') // Remove markdown
-    .replace(/^\s*Here.*?:\s*/i, '')   // Remove intro text
-    .replace(/\n\s*\/\/.*$/gm, '')     // Remove comments
-    .trim()
-
-  console.log('🔍 Cleaned Response:')
-  console.log(cleanResponse.substring(0, 1000)) // First 1000 chars
-
-  // Step 2: Try direct JSON parse (most common case)
-  try {
-    const parsed = JSON.parse(cleanResponse)
-    console.log('✅ Direct JSON parse successful')
-    if (parsed.questions && Array.isArray(parsed.questions)) {
-      return parsed
-    }
-  } catch (parseError) {
-    console.log('❌ Direct JSON parse failed:', parseError.message)
-    console.log('🔍 Problem area around character:', parseError.message.match(/\d+/)?.[0] || 'unknown')
-  }
-
-  // Step 3: Simple fallback - just try to find and extract the questions array
-  try {
-    // Look for the questions array specifically
-    const questionsMatch = cleanResponse.match(/"questions"\s*:\s*\[([\s\S]*?)\]/);
-    if (questionsMatch) {
-      console.log('🔍 Found questions array, attempting to parse...')
-      
-      // Try to parse just the questions array portion
-      const questionsArrayStr = `[${questionsMatch[1]}]`
-      const questionsArray = JSON.parse(questionsArrayStr)
-      
-      console.log('✅ Successfully parsed questions array:', questionsArray.length, 'questions')
-      return { questions: questionsArray }
-    }
-  } catch (extractError) {
-    console.log('❌ Questions array extraction failed:', extractError.message)
-  }
-
-  // Step 4: Last resort - character by character scan to find the JSON issue
-  console.log('🔍 Scanning for JSON syntax errors...')
-  let bracketCount = 0
-  let inString = false
-  let escapeNext = false
-  
-  for (let i = 0; i < cleanResponse.length; i++) {
-    const char = cleanResponse[i]
-    const prevChar = cleanResponse[i - 1]
-    
-    if (escapeNext) {
-      escapeNext = false
-      continue
-    }
-    
-    if (char === '\\') {
-      escapeNext = true
-      continue
-    }
-    
-    if (char === '"' && prevChar !== '\\') {
-      inString = !inString
-      continue
-    }
-    
-    if (!inString) {
-      if (char === '{' || char === '[') {
-        bracketCount++
-      } else if (char === '}' || char === ']') {
-        bracketCount--
-        if (bracketCount < 0) {
-          console.log(`🔍 Bracket mismatch at position ${i}:`, cleanResponse.substring(Math.max(0, i-50), i+50))
-          break
-        }
-      }
-    }
-  }
-  
-  console.log('🔍 Final bracket count:', bracketCount, '(should be 0)')
-
-  throw new Error('Unable to parse AI response as JSON')
-}
-
-// // 🔧 ALSO ADD this temporary function to your route to bypass parsing issues:
-// // Add this right after your OpenAI API call, before the parsing:
-
-// console.log('🔍 Raw AI Response Length:', aiResponse.length)
-// console.log('🔍 First 200 characters:', aiResponse.substring(0, 200))
-// console.log('🔍 Last 200 characters:', aiResponse.substring(aiResponse.length - 200))
-
-// // Check if it starts and ends like valid JSON
-// const startsLikeJSON = aiResponse.trim().startsWith('{')
-// const endsLikeJSON = aiResponse.trim().endsWith('}')
-// console.log('🔍 Looks like JSON?', { startsLikeJSON, endsLikeJSON })
-
-// 🎯 QUESTION VALIDATION WITH DETAILED LOGGING
-function validateAndEnhanceQuestions(questions: any[], certification: string, domain: string, questionCount: number): any[] {
-  if (!Array.isArray(questions)) {
-    console.log('❌ Questions is not an array:', typeof questions)
-    return []
-  }
-
-  const validatedQuestions = questions
-    .filter((q, index) => {
-      // Check all required fields
-      const isValid = 
-        q &&
-        typeof q.question === 'string' && q.question.length > 10 &&
-        Array.isArray(q.options) && q.options.length === 4 &&
-        typeof q.correct === 'number' && q.correct >= 0 && q.correct < 4 &&
-        q.options.every((option: any) => typeof option === 'string' && option.length > 1)
-
-      if (!isValid) {
-        console.log(`❌ Invalid question ${index + 1}:`, {
-          hasQuestion: !!q?.question,
-          questionLength: q?.question?.length || 0,
-          hasOptions: Array.isArray(q?.options),
-          optionsLength: q?.options?.length || 0,
-          correctType: typeof q?.correct,
-          correctValue: q?.correct
-        })
-        return false
-      }
-      
-      return true
-    })
-    .slice(0, questionCount)
-    .map((q, index) => ({
-      id: index + 1,
-      question: q.question.trim(),
-      options: q.options.map((opt: string) => opt.trim()),
-      correct: q.correct,
-      explanation: q.explanation?.trim() || 'Explanation not provided',
-      domain: domain,
-      certification: certification,
-      generatedAt: new Date().toISOString(),
-      difficulty: 'intermediate', // Could be enhanced based on analysis
-    }))
-
-  console.log(`✅ Validated ${validatedQuestions.length}/${questions.length} questions`)
-  return validatedQuestions
-}
-
-// 🎯 IMPROVED FALLBACK QUESTIONS
-function generateFallbackQuestions(certification: string, domain: string, count: number): any[] {
-  const fallbackTemplates = {
-    'AZ-900': [
-      {
-        question: "A company wants to migrate their on-premises infrastructure to reduce capital expenditure. Which cloud deployment model best addresses this requirement?",
-        options: ["A) Private cloud", "B) Public cloud", "C) Hybrid cloud", "D) Community cloud"],
-        correct: 1,
-        explanation: "Public cloud eliminates the need for upfront capital expenditure as you pay only for what you use (OpEx model)."
-      },
-      {
-        question: "Which Azure service provides identity and access management capabilities?",
-        options: ["A) Azure Monitor", "B) Azure Active Directory", "C) Azure Security Center", "D) Azure Key Vault"],
-        correct: 1,
-        explanation: "Azure Active Directory (Azure AD) is Microsoft's cloud-based identity and access management service."
-      },
-      {
-        question: "What is the primary benefit of using availability zones in Azure?",
-        options: ["A) Cost reduction", "B) Performance improvement", "C) High availability", "D) Network security"],
-        correct: 2,
-        explanation: "Availability zones provide high availability by distributing resources across separate data centers within a region."
-      }
-    ]
-    // Add more templates for other certifications as needed
-  }
-
-  const templates = fallbackTemplates[certification as keyof typeof fallbackTemplates] || fallbackTemplates['AZ-900']
-  const selectedQuestions = templates.slice(0, count)
-
-  return selectedQuestions.map((q, index) => ({
+function getTopicSpecificFallbacks(topic: string, count: number): any[] {
+  const fallbacks = TOPIC_SPECIFIC_FALLBACKS[topic] || TOPIC_SPECIFIC_FALLBACKS["What is cloud computing?"]
+  return fallbacks.slice(0, count).map((q, index) => ({
     ...q,
     id: index + 1,
-    domain: domain,
-    certification: certification,
-    generatedAt: new Date().toISOString(),
-    isFallback: true
+    domain: topic,
+    certification: 'AZ-900',
+    isFallback: true,
+    topicSpecific: true
   }))
 }
 
-// 🚀 MAIN API HANDLER
+// 🎯 MAIN API HANDLER WITH ENHANCED TOPIC AWARENESS
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -238,195 +237,133 @@ export async function POST(req: NextRequest) {
       certification = 'AZ-900', 
       domain = 'Cloud Concepts', 
       questionCount = 10,
-      topicDetails = null 
+      topicDetails = null,
+      moduleContent = []
     } = body
 
-    console.log(`🎯 Generating ${questionCount} questions for ${certification} - ${domain}`)
+    // Determine the specific topic
+    const specificTopic = topicDetails?.topicTitle || domain
+    console.log(`🎯 Generating ${questionCount} TOPIC-SPECIFIC questions for: "${specificTopic}"`)
 
-    // Determine if this is a topic-specific request
-    const isTopicSpecific = !!topicDetails
-    const contextTitle = isTopicSpecific ? topicDetails.topicTitle : domain
+    // Generate topic-specific prompt
+    const dynamicPrompt = generateTopicSpecificPrompt(specificTopic, certification, questionCount)
+    
+    console.log(`📝 Using topic-specific prompt for: ${specificTopic}`)
 
-    // 🎯 BUILD DYNAMIC PROMPT
-    const dynamicPrompt = `${QUIZ_GENERATION_PROMPT}
-
-CERTIFICATION: ${certification}
-DOMAIN/TOPIC: ${contextTitle}
-QUESTION COUNT: ${questionCount}
-
-${isTopicSpecific ? `
-SPECIFIC TOPIC CONTEXT:
-- Module: ${topicDetails.moduleTitle}
-- Topic: ${topicDetails.topicTitle}
-- Focus on specific concepts within this topic
-` : `
-DOMAIN FOCUS: ${domain}
-- Create questions covering various aspects of this domain
-- Include real-world scenarios and practical applications
-`}
-
-Generate exactly ${questionCount} unique, scenario-based questions.`
-
-const completion = await openai.chat.completions.create({
-  model: 'gpt-4o-mini',
-  response_format: { type: "json_object" }, // ← ADD THIS LINE
-  max_tokens: 3500,
-  temperature: 0.7,
-  messages: [
-    { 
-      role: 'system', 
-      content: `You are a certification expert. Always respond with valid JSON containing questions array.` 
-    },
-    { 
-      role: 'user', 
-      content: `Generate exactly ${questionCount} quiz questions for ${certification} certification.
-
-Return ONLY this JSON:
-{
-  "questions": [
-    {
-      "id": 1,
-      "question": "Simple question text",
-      "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
-      "correct": 0,
-      "explanation": "Simple explanation"
-    }
-  ]
-}
-
-Keep all text simple without special characters.`
-    }
-  ],
-})
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      response_format: { type: "json_object" },
+      max_tokens: 4000,
+      temperature: 0.7,
+      messages: [
+        { 
+          role: 'system', 
+          content: `You are a Microsoft certification expert. Create exam questions specific to the requested topic. Always respond with valid JSON.` 
+        },
+        { 
+          role: 'user', 
+          content: dynamicPrompt
+        }
+      ],
+    })
 
     const aiResponse = completion.choices[0]?.message?.content?.trim()
     if (!aiResponse) {
       throw new Error('No response from OpenAI')
     }
 
-    console.log(`📝 AI Response received (${aiResponse.length} chars)`)
-    console.log('🔍 First 500 characters:')
-    console.log(aiResponse.substring(0, 500))
-    console.log('🔍 Last 500 characters:')  
-    console.log(aiResponse.substring(aiResponse.length - 500))
+    console.log(`📝 AI Response received for "${specificTopic}" (${aiResponse.length} chars)`)
 
-    const startsLikeJSON = aiResponse.trim().startsWith('{')
-    const endsLikeJSON = aiResponse.trim().endsWith('}')
-    console.log('🔍 Looks like JSON?', { startsLikeJSON, endsLikeJSON })
-
-    console.log(`📝 AI Response received (${aiResponse.length} chars)`)
-
-    // 🔍 PARSE AND VALIDATE
+    // Parse response
     let parsedData
     try {
-      parsedData = parseAIResponse(aiResponse)
+      parsedData = JSON.parse(aiResponse)
     } catch (parseError) {
-      console.error('❌ Parse error:', parseError.message)
-      console.log('📄 Raw response preview:', aiResponse.substring(0, 300))
-      
-      // Use fallback questions
-      const fallbackQuestions = generateFallbackQuestions(certification, domain, questionCount)
+      console.error(`❌ Parse error for topic "${specificTopic}":`, parseError.message)
+      const fallbacks = getTopicSpecificFallbacks(specificTopic, questionCount)
       return NextResponse.json({ 
-        questions: fallbackQuestions,
+        questions: fallbacks,
         metadata: {
           certification,
-          domain: contextTitle,
-          questionCount: fallbackQuestions.length,
-          generatedAt: new Date().toISOString(),
-          source: 'Fallback',
-          isFallback: true,
-          error: 'AI response parsing failed'
+          domain: specificTopic,
+          questionCount: fallbacks.length,
+          source: 'Topic-Specific Fallback',
+          topicFocus: specificTopic,
+          isFallback: true
         }
       })
     }
 
-    // Extract questions array
-    const questions = Array.isArray(parsedData) ? parsedData : parsedData.questions || []
+    const questions = parsedData.questions || []
     
     if (!Array.isArray(questions) || questions.length === 0) {
-      throw new Error('No valid questions in response')
-    }
-
-    // 🛡️ VALIDATE AND ENHANCE QUESTIONS
-    const validatedQuestions = validateAndEnhanceQuestions(questions, certification, contextTitle, questionCount)
-
-    if (validatedQuestions.length === 0) {
-      console.log('⚠️ No valid questions after validation, using fallback')
-      const fallbackQuestions = generateFallbackQuestions(certification, domain, questionCount)
+      const fallbacks = getTopicSpecificFallbacks(specificTopic, questionCount)
       return NextResponse.json({ 
-        questions: fallbackQuestions,
+        questions: fallbacks,
         metadata: {
           certification,
-          domain: contextTitle,
-          questionCount: fallbackQuestions.length,
-          generatedAt: new Date().toISOString(),
-          source: 'Fallback',
-          isFallback: true,
-          error: 'Question validation failed'
+          domain: specificTopic,
+          questionCount: fallbacks.length,
+          source: 'Topic-Specific Fallback',
+          topicFocus: specificTopic,
+          isFallback: true
         }
       })
     }
 
-    // ✅ SUCCESS RESPONSE
-    const response = {
-      questions: validatedQuestions,
+    // Validate topic specificity
+    const topicValidatedQuestions = validateTopicSpecificity(questions, specificTopic)
+    
+    // Enhance questions with metadata
+    const enhancedQuestions = topicValidatedQuestions.slice(0, questionCount).map((q, index) => ({
+      id: index + 1,
+      question: q.question?.trim() || `Question ${index + 1}`,
+      options: Array.isArray(q.options) ? q.options.map(opt => opt.trim()) : [`A) Option 1`, `B) Option 2`, `C) Option 3`, `D) Option 4`],
+      correct: typeof q.correct === 'number' ? q.correct : 0,
+      explanation: q.explanation?.trim() || 'Explanation not provided',
+      domain: specificTopic,
+      certification: certification,
+      topicAlignment: q.topicAlignment || 'medium',
+      relevanceScore: q.relevanceScore || 0,
+      generatedAt: new Date().toISOString()
+    }))
+
+    console.log(`✅ Generated ${enhancedQuestions.length} topic-specific questions for "${specificTopic}"`)
+    console.log(`🎯 Topic alignment scores:`, enhancedQuestions.map(q => ({ id: q.id, score: q.relevanceScore, alignment: q.topicAlignment })))
+
+    return NextResponse.json({
+      questions: enhancedQuestions,
       metadata: {
         certification,
-        domain: contextTitle,
-        questionCount: validatedQuestions.length,
+        domain: specificTopic,
+        questionCount: enhancedQuestions.length,
         generatedAt: new Date().toISOString(),
-        source: isTopicSpecific ? 'Microsoft Learn Topic' : 'Comprehensive Content',
-        isTopicSpecific,
-        model: MODEL_CONFIG.model
+        source: 'Microsoft Learn Topic-Specific',
+        topicFocus: specificTopic,
+        averageRelevanceScore: enhancedQuestions.reduce((sum, q) => sum + q.relevanceScore, 0) / enhancedQuestions.length,
+        highAlignmentCount: enhancedQuestions.filter(q => q.topicAlignment === 'high').length
       }
-    }
-
-    console.log(`✅ Successfully generated ${validatedQuestions.length} questions`)
-    return NextResponse.json(response)
+    })
 
   } catch (error) {
-    console.error('❌ Quiz generation error:', error)
-
-    // 🚨 ERROR HANDLING
-    if (error.message?.includes('quota') || error.message?.includes('rate limit')) {
-      return NextResponse.json(
-        { error: 'API quota exceeded. Please try again in a few minutes.' },
-        { status: 429 }
-      )
-    }
-
-    if (error.message?.includes('API key')) {
-      return NextResponse.json(
-        { error: 'API configuration error. Please contact support.' },
-        { status: 500 }
-      )
-    }
-
-    // Final fallback
-    try {
-      const body = await req.json()
-      const fallbackQuestions = generateFallbackQuestions(
-        body.certification || 'AZ-900',
-        body.domain || 'Cloud Concepts',
-        body.questionCount || 5
-      )
-      return NextResponse.json({ 
-        questions: fallbackQuestions,
-        metadata: {
-          certification: body.certification || 'AZ-900',
-          domain: body.domain || 'Cloud Concepts',
-          questionCount: fallbackQuestions.length,
-          generatedAt: new Date().toISOString(),
-          source: 'Emergency Fallback',
-          isFallback: true,
-          error: 'System error, using backup questions'
-        }
-      })
-    } catch (fallbackError) {
-      return NextResponse.json(
-        { error: 'Failed to generate quiz questions. Please try again later.' },
-        { status: 500 }
-      )
-    }
+    console.error('❌ Enhanced quiz generation error:', error)
+    
+    // Enhanced fallback with topic awareness
+    const body = await req.json().catch(() => ({}))
+    const specificTopic = body.topicDetails?.topicTitle || body.domain || 'Cloud Concepts'
+    const fallbacks = getTopicSpecificFallbacks(specificTopic, body.questionCount || 5)
+    
+    return NextResponse.json({ 
+      questions: fallbacks,
+      metadata: {
+        certification: body.certification || 'AZ-900',
+        domain: specificTopic,
+        questionCount: fallbacks.length,
+        source: 'Error Recovery Fallback',
+        topicFocus: specificTopic,
+        isFallback: true,
+        error: 'Enhanced system error, using topic-specific backup questions'
+      }
+    })
   }
 }
