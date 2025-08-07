@@ -239,24 +239,66 @@ export default function EnhancedPersonalizedCoach() {
   const [availableTopics, setAvailableTopics] = useState([])
   const [certificationContent, setCertificationContent] = useState(null)
 
-    // ADD THIS useEffect HERE (after state, before helper functions):
+// 🎯 SIMPLE: Just replace your useEffect on line 243 with this
+
 useEffect(() => {
   const checkSession = () => {
-    const session = localStorage.getItem('currentSession')
-    if (session) {
+    let session = localStorage.getItem('currentSession')
+    
+    // Create session if none exists
+    if (!session) {
+      const newSession = {
+        sessionId: `session_${Date.now()}`,
+        startTime: Date.now(),
+        lastActivity: Date.now(),
+        messageCount: 0,
+        quizCount: 0
+      }
+      localStorage.setItem('currentSession', JSON.stringify(newSession))
+      session = JSON.stringify(newSession)
+      console.log('🟢 New session created')
+    }
+    
+    // Update UI with session timing
+    try {
       const { startTime } = JSON.parse(session)
       const elapsed = Date.now() - startTime
       const remaining = (45 * 60 * 1000) - elapsed // 45 minutes
       setTimeLeft(Math.max(0, remaining))
       setSessionStatus('🟢 Active')
-    } else {
-      setSessionStatus('🔴 None')
+    } catch (error) {
+      console.error('Session error:', error)
+      setSessionStatus('🔴 Error')
       setTimeLeft(0)
     }
   }
+  
   checkSession()
   
-  const interval = setInterval(checkSession, 1000)
+  // Add one debug function to window for testing
+  if (typeof window !== 'undefined') {
+    window.debugQuiz = async () => {
+      console.log('🧪 Testing quiz API...')
+      try {
+        const response = await fetch('/api/generate-quiz', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            certification: 'AZ-900',
+            domain: 'Cloud Concepts',
+            questionCount: 3
+          })
+        })
+        console.log('Status:', response.status)
+        const data = await response.json()
+        console.log('Response:', data)
+      } catch (error) {
+        console.error('Error:', error)
+      }
+    }
+  }
+  
+  const interval = setInterval(checkSession, 60000)
   return () => clearInterval(interval)
 }, [])
 
