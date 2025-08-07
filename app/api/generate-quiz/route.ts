@@ -1,4 +1,4 @@
-// app/api/generate-quiz/route.ts - ENHANCED VERSION
+// app/api/generate-quiz/route.ts - COMPLETE VERSION WITH ALL AZ-900 TOPICS
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
@@ -6,89 +6,77 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-// 🎯 ENHANCED MICROSOFT LEARN CONTENT MAPPING
+// 🎯 COMPLETE AZ-900 TOPIC SPECIFICATIONS (Aligned with Official Study Guide)
 const AZ900_TOPIC_SPECIFICATIONS = {
-  // Module 1: Cloud Concepts
-  "What is cloud computing?": {
-    focus: "Cloud computing fundamentals, characteristics, and benefits vs traditional IT",
-    keyTerms: ["on-demand self-service", "broad network access", "resource pooling", "rapid elasticity", "measured service"],
-    scenarios: ["Cost comparison", "Scalability requirements", "Global access needs"],
-    examStyle: "Definition-based and benefit comparison questions"
+  // Module 1: Cloud Concepts (25-30%)
+  "Describe cloud computing": {
+    focus: "Cloud computing definition, shared responsibility, cloud models, consumption model, pricing, serverless",
+    keyTerms: ["cloud computing", "shared responsibility model", "public cloud", "private cloud", "hybrid cloud", "consumption-based model", "pay-as-you-go", "serverless", "CapEx", "OpEx"],
+    scenarios: ["Cloud model selection", "Pricing model comparison", "Shared responsibility scenarios", "Serverless architecture decisions"],
+    examStyle: "Definition-based, responsibility matrix, and pricing model questions"
   },
-  "Shared responsibility model": {
-    focus: "Division of responsibilities between cloud provider and customer across service types",
-    keyTerms: ["IaaS responsibilities", "PaaS responsibilities", "SaaS responsibilities", "customer vs Microsoft responsibilities"],
-    scenarios: ["Security incident response", "Compliance requirements", "Data protection responsibilities"],
-    examStyle: "Responsibility matrix and security scenario questions"
+  "Describe the benefits of using cloud services": {
+    focus: "High availability, scalability, reliability, predictability, security, governance, manageability benefits",
+    keyTerms: ["high availability", "scalability", "elasticity", "reliability", "predictability", "security", "governance", "manageability", "SLA", "disaster recovery"],
+    scenarios: ["Availability requirements", "Scaling decisions", "Disaster recovery planning", "SLA compliance"],
+    examStyle: "Benefit identification and scenario-based application questions"
   },
-  "Cloud deployment models": {
-    focus: "Public, private, hybrid, and multi-cloud deployment strategies",
-    keyTerms: ["public cloud", "private cloud", "hybrid cloud", "multi-cloud", "community cloud"],
-    scenarios: ["Regulatory compliance", "Cost optimization", "Performance requirements"],
-    examStyle: "Deployment strategy selection based on business requirements"
-  },
-  "Cloud service types (IaaS, PaaS, SaaS)": {
-    focus: "Service model characteristics, examples, and appropriate use cases",
-    keyTerms: ["Infrastructure as a Service", "Platform as a Service", "Software as a Service", "control levels", "management responsibilities"],
-    scenarios: ["Application development needs", "Infrastructure management", "Software delivery models"],
-    examStyle: "Service type identification and use case matching"
+  "Describe cloud service types": {
+    focus: "IaaS, PaaS, SaaS characteristics, use cases, and appropriate service selection",
+    keyTerms: ["Infrastructure as a Service", "Platform as a Service", "Software as a Service", "IaaS", "PaaS", "SaaS", "shared responsibility", "use cases"],
+    scenarios: ["Service type selection", "Migration strategies", "Application hosting decisions", "Development platform choices"],
+    examStyle: "Service type identification and use case matching questions"
   },
 
-  // Module 2: Azure Architecture and Services  
-  "Azure global infrastructure": {
-    focus: "Regions, availability zones, region pairs, and global presence",
-    keyTerms: ["Azure regions", "availability zones", "region pairs", "geographies", "sovereign clouds"],
-    scenarios: ["Disaster recovery planning", "Latency optimization", "Compliance requirements"],
-    examStyle: "Infrastructure planning and availability design questions"
+  // Module 2: Azure Architecture and Services (35-40%)
+  "Describe the core architectural components of Azure": {
+    focus: "Regions, availability zones, datacenters, resources, resource groups, subscriptions, management groups, hierarchy",
+    keyTerms: ["Azure regions", "region pairs", "sovereign regions", "availability zones", "datacenters", "Azure resources", "resource groups", "subscriptions", "management groups", "hierarchy"],
+    scenarios: ["Regional planning", "High availability design", "Organizational structure", "Governance hierarchy"],
+    examStyle: "Architecture design and organizational hierarchy questions"
   },
-  "Azure compute services": {
-    focus: "Virtual machines, App Service, Functions, Container Instances, AKS",
-    keyTerms: ["Azure Virtual Machines", "Azure App Service", "Azure Functions", "Azure Container Instances", "Azure Kubernetes Service"],
-    scenarios: ["Application hosting decisions", "Serverless vs container choices", "Scalability requirements"],
-    examStyle: "Service selection based on application requirements"
+  "Describe Azure compute and networking services": {
+    focus: "Compute types, VMs, containers, functions, networking, VPN, ExpressRoute, endpoints",
+    keyTerms: ["virtual machines", "containers", "Azure Functions", "VM Scale Sets", "Azure Virtual Desktop", "Virtual Network", "VPN Gateway", "ExpressRoute", "public endpoints", "private endpoints"],
+    scenarios: ["Compute selection", "Networking design", "Hybrid connectivity", "Application hosting"],
+    examStyle: "Service selection and networking architecture questions"
   },
-  "Azure networking services": {
-    focus: "Virtual networks, VPN Gateway, ExpressRoute, DNS, load balancing",
-    keyTerms: ["Virtual Network", "VPN Gateway", "ExpressRoute", "Azure DNS", "Load Balancer", "Application Gateway"],
-    scenarios: ["Hybrid connectivity", "Network security", "Traffic distribution"],
-    examStyle: "Network architecture and connectivity solution questions"
+  "Describe Azure storage services": {
+    focus: "Storage types, tiers, redundancy, migration options, file movement tools",
+    keyTerms: ["Blob storage", "Azure Files", "Queue storage", "Table storage", "storage tiers", "Hot", "Cool", "Archive", "LRS", "ZRS", "GRS", "AzCopy", "Azure Storage Explorer", "Azure Migrate", "Azure Data Box"],
+    scenarios: ["Storage solution design", "Data migration", "Cost optimization", "Access pattern analysis"],
+    examStyle: "Storage selection and migration strategy questions"
   },
-  "Azure storage services": {
-    focus: "Blob, Files, Queues, Tables, and storage tiers",
-    keyTerms: ["Blob storage", "Azure Files", "Queue storage", "Table storage", "storage tiers", "replication options"],
-    scenarios: ["Data archival", "Application storage needs", "Performance requirements"],
-    examStyle: "Storage solution selection and configuration questions"
-  },
-  "Azure database services": {
-    focus: "SQL Database, Cosmos DB, MySQL, PostgreSQL, analytics services",
-    keyTerms: ["Azure SQL Database", "Azure Cosmos DB", "Azure Database for MySQL", "Azure Database for PostgreSQL", "Azure Synapse Analytics"],
-    scenarios: ["Database migration", "Global distribution", "Analytics requirements"],
-    examStyle: "Database service selection and scalability questions"
+  "Describe Azure identity, access, and security": {
+    focus: "Directory services, authentication, external identities, access control, Zero Trust, defense-in-depth, security tools",
+    keyTerms: ["Microsoft Entra ID", "Entra Domain Services", "single sign-on", "multi-factor authentication", "passwordless", "B2B", "B2C", "Conditional Access", "Azure RBAC", "Zero Trust", "defense-in-depth", "Microsoft Defender for Cloud"],
+    scenarios: ["Identity management", "Access control design", "Security implementation", "External user access"],
+    examStyle: "Security architecture and identity management questions"
   },
 
-  // Module 3: Management and Governance
-  "Cost management in Azure": {
-    focus: "Pricing models, cost optimization, and financial management tools",
-    keyTerms: ["pay-as-you-go", "reserved instances", "Azure Pricing Calculator", "TCO Calculator", "Cost Management"],
-    scenarios: ["Budget planning", "Cost optimization", "Financial forecasting"],
+  // Module 3: Management and Governance (30-35%)
+  "Describe cost management in Azure": {
+    focus: "Cost factors, pricing calculator, TCO calculator, cost management tools, tags",
+    keyTerms: ["cost factors", "pricing calculator", "TCO calculator", "Cost Management", "budgets", "alerts", "tags", "reserved instances", "spot instances", "Azure Advisor"],
+    scenarios: ["Cost estimation", "Budget planning", "Cost optimization", "Chargeback implementation"],
     examStyle: "Cost calculation and optimization strategy questions"
   },
-  "Features and tools for governance and compliance": {
-    focus: "Azure Policy, Blueprints, compliance offerings, and governance tools",
-    keyTerms: ["Azure Policy", "Azure Blueprints", "compliance offerings", "resource locks", "management groups"],
-    scenarios: ["Regulatory compliance", "Resource governance", "Standards enforcement"],
-    examStyle: "Governance implementation and compliance questions"
+  "Describe features and tools in Azure for governance and compliance": {
+    focus: "Microsoft Purview, Azure Policy, resource locks, compliance offerings",
+    keyTerms: ["Microsoft Purview", "Azure Policy", "resource locks", "Azure Blueprints", "Service Trust Portal", "compliance offerings", "ISO", "SOC", "FedRAMP", "GDPR", "HIPAA"],
+    scenarios: ["Governance implementation", "Compliance requirements", "Policy enforcement", "Resource protection"],
+    examStyle: "Governance design and compliance questions"
   },
-  "Tools for managing and deploying Azure resources": {
-    focus: "Portal, CLI, PowerShell, ARM templates, and mobile app",
-    keyTerms: ["Azure Portal", "Azure CLI", "Azure PowerShell", "ARM templates", "Azure mobile app"],
-    scenarios: ["Automation requirements", "Deployment consistency", "Management preferences"],
+  "Describe features and tools for managing and deploying Azure resources": {
+    focus: "Azure portal, Cloud Shell, CLI, PowerShell, Azure Arc, IaC, ARM templates",
+    keyTerms: ["Azure portal", "Azure Cloud Shell", "Azure CLI", "Azure PowerShell", "Azure Arc", "Infrastructure as Code", "IaC", "Azure Resource Manager", "ARM templates"],
+    scenarios: ["Management tool selection", "Automation implementation", "Hybrid management", "Deployment strategies"],
     examStyle: "Tool selection and automation scenario questions"
   },
-  "Monitoring tools in Azure": {
-    focus: "Azure Monitor, Service Health, Advisor, and Application Insights",
-    keyTerms: ["Azure Monitor", "Azure Service Health", "Azure Advisor", "Application Insights", "Log Analytics"],
-    scenarios: ["Performance monitoring", "Health tracking", "Optimization recommendations"],
+  "Describe monitoring tools in Azure": {
+    focus: "Azure Advisor, Service Health, Azure Monitor, Log Analytics, alerts, Application Insights",
+    keyTerms: ["Azure Advisor", "Azure Service Health", "Azure Monitor", "Log Analytics", "Azure Monitor alerts", "Application Insights", "metrics", "logs", "dashboards"],
+    scenarios: ["Monitoring strategy", "Performance optimization", "Alerting configuration", "Application insights"],
     examStyle: "Monitoring solution design and troubleshooting questions"
   }
 }
@@ -171,9 +159,9 @@ function validateTopicSpecificity(questions: any[], topic: string): any[] {
   }).sort((a, b) => b.relevanceScore - a.relevanceScore)
 }
 
-// 🎯 ENHANCED FALLBACK QUESTIONS BY TOPIC
+// 🎯 COMPREHENSIVE TOPIC-SPECIFIC FALLBACK QUESTIONS
 const TOPIC_SPECIFIC_FALLBACKS = {
-  "What is cloud computing?": [
+  "Describe cloud computing": [
     {
       question: "A startup wants to avoid large upfront infrastructure costs and scale resources based on demand. Which cloud computing characteristic best addresses this need?",
       options: ["A) Broad network access", "B) Rapid elasticity", "C) Resource pooling", "D) Measured service"],
@@ -181,27 +169,13 @@ const TOPIC_SPECIFIC_FALLBACKS = {
       explanation: "Rapid elasticity allows automatic scaling of resources up or down based on demand, avoiding upfront costs."
     },
     {
-      question: "An organization wants to access applications from any device with internet connectivity. Which cloud characteristic enables this capability?",
-      options: ["A) On-demand self-service", "B) Broad network access", "C) Resource pooling", "D) Measured service"],
-      correct: 1,
-      explanation: "Broad network access ensures services are available over the network through standard mechanisms."
-    }
-  ],
-  "Monitoring tools in Azure": [
-    {
-      question: "A company needs to track the performance of their Azure web application and identify slow-performing pages. Which Azure service should they implement?",
-      options: ["A) Azure Monitor", "B) Azure Service Health", "C) Application Insights", "D) Azure Advisor"],
+      question: "In the shared responsibility model, which security aspect is always the customer's responsibility regardless of service type?",
+      options: ["A) Physical security", "B) Network controls", "C) Data classification", "D) Host infrastructure"],
       correct: 2,
-      explanation: "Application Insights provides detailed application performance monitoring and can identify performance bottlenecks."
-    },
-    {
-      question: "An administrator wants to receive recommendations for optimizing Azure resource costs and performance. Which tool provides these capabilities?",
-      options: ["A) Azure Monitor", "B) Azure Advisor", "C) Azure Service Health", "D) Log Analytics"],
-      correct: 1,
-      explanation: "Azure Advisor provides personalized recommendations for cost optimization, performance, and security."
+      explanation: "Data classification is always the customer's responsibility across IaaS, PaaS, and SaaS."
     }
   ],
-  "Benefits of using cloud services": [
+  "Describe the benefits of using cloud services": [
     {
       question: "A company experiences seasonal traffic spikes and wants to automatically adjust computing resources. Which cloud benefit addresses this requirement?",
       options: ["A) High availability", "B) Scalability", "C) Security", "D) Predictability"],
@@ -214,11 +188,131 @@ const TOPIC_SPECIFIC_FALLBACKS = {
       correct: 2,
       explanation: "High availability ensures services continue operating even when individual components or datacenters fail."
     }
+  ],
+  "Describe cloud service types": [
+    {
+      question: "A development team wants to focus on coding without managing operating systems or runtime environments. Which service type best meets this need?",
+      options: ["A) Infrastructure as a Service (IaaS)", "B) Platform as a Service (PaaS)", "C) Software as a Service (SaaS)", "D) Function as a Service (FaaS)"],
+      correct: 1,
+      explanation: "PaaS provides a platform for development without requiring management of underlying infrastructure or operating systems."
+    }
+  ],
+  "Describe the core architectural components of Azure": [
+    {
+      question: "A company needs to ensure their application remains available even if an entire Azure datacenter becomes unavailable. Which Azure feature should they use?",
+      options: ["A) Azure regions", "B) Availability zones", "C) Resource groups", "D) Management groups"],
+      correct: 1,
+      explanation: "Availability zones are physically separate locations within an Azure region that protect against datacenter failures."
+    },
+    {
+      question: "An enterprise wants to apply governance policies across multiple Azure subscriptions. Which Azure feature provides this capability?",
+      options: ["A) Resource groups", "B) Azure regions", "C) Management groups", "D) Availability zones"],
+      correct: 2,
+      explanation: "Management groups allow you to organize subscriptions and apply governance policies across multiple subscriptions."
+    }
+  ],
+  "Describe Azure compute and networking services": [
+    {
+      question: "A company needs to provide remote desktop access to applications for employees working from home. Which Azure service should they use?",
+      options: ["A) Azure Virtual Machines", "B) Azure Functions", "C) Azure Virtual Desktop", "D) Azure Container Instances"],
+      correct: 2,
+      explanation: "Azure Virtual Desktop provides virtualized desktop and application access for remote workers."
+    },
+    {
+      question: "An organization wants to establish a private, dedicated connection to Azure that doesn't go over the public internet. Which service should they use?",
+      options: ["A) VPN Gateway", "B) ExpressRoute", "C) Virtual Network", "D) Azure DNS"],
+      correct: 1,
+      explanation: "ExpressRoute provides private connectivity to Azure that doesn't traverse the public internet."
+    }
+  ],
+  "Describe Azure storage services": [
+    {
+      question: "A company needs to store large amounts of unstructured data that is accessed infrequently and can tolerate several hours of retrieval time. Which storage tier should they use?",
+      options: ["A) Hot tier", "B) Cool tier", "C) Archive tier", "D) Premium tier"],
+      correct: 2,
+      explanation: "Archive tier is designed for data that is rarely accessed and can tolerate several hours of retrieval latency."
+    },
+    {
+      question: "An organization needs to migrate 80 TB of data to Azure but has limited internet bandwidth. Which Azure service should they use?",
+      options: ["A) AzCopy", "B) Azure Storage Explorer", "C) Azure Data Box", "D) Azure File Sync"],
+      correct: 2,
+      explanation: "Azure Data Box is designed for large-scale data migration when network bandwidth is limited."
+    }
+  ],
+  "Describe Azure identity, access, and security": [
+    {
+      question: "A company wants to implement a security model where access is never trusted and always verified. Which security concept should they adopt?",
+      options: ["A) Defense in depth", "B) Zero Trust", "C) Role-based access control", "D) Conditional Access"],
+      correct: 1,
+      explanation: "Zero Trust is a security model that assumes no implicit trust and continuously validates every transaction."
+    },
+    {
+      question: "An organization wants to allow external partners to access specific Azure resources without creating accounts in their Azure AD. Which feature should they use?",
+      options: ["A) Multi-factor authentication", "B) Single sign-on", "C) Azure AD B2B", "D) Azure AD B2C"],
+      correct: 2,
+      explanation: "Azure AD B2B allows external users to access your resources using their own credentials."
+    }
+  ],
+  "Describe cost management in Azure": [
+    {
+      question: "A company wants to estimate the cost of migrating their on-premises servers to Azure. Which tool should they use?",
+      options: ["A) Azure Pricing Calculator", "B) TCO Calculator", "C) Azure Cost Management", "D) Azure Advisor"],
+      correct: 1,
+      explanation: "The TCO Calculator helps estimate the cost savings of migrating workloads to Azure."
+    },
+    {
+      question: "An organization wants to categorize and track costs across different departments. Which Azure feature should they implement?",
+      options: ["A) Resource groups", "B) Management groups", "C) Tags", "D) Subscriptions"],
+      correct: 2,
+      explanation: "Tags allow you to categorize resources and track costs across different dimensions like departments or projects."
+    }
+  ],
+  "Describe features and tools in Azure for governance and compliance": [
+    {
+      question: "A company needs to ensure all virtual machines in their subscription have specific security configurations. Which Azure service should they use?",
+      options: ["A) Azure Blueprints", "B) Azure Policy", "C) Azure Advisor", "D) Azure Monitor"],
+      correct: 1,
+      explanation: "Azure Policy allows you to create, assign, and manage policies that enforce rules and effects over your resources."
+    },
+    {
+      question: "An organization wants to prevent accidental deletion of critical resources. Which Azure feature should they implement?",
+      options: ["A) Azure Policy", "B) Resource locks", "C) Azure Blueprints", "D) Management groups"],
+      correct: 1,
+      explanation: "Resource locks prevent users from accidentally deleting or modifying critical resources."
+    }
+  ],
+  "Describe features and tools for managing and deploying Azure resources": [
+    {
+      question: "A DevOps team wants to deploy the same infrastructure configuration consistently across multiple environments. Which approach should they use?",
+      options: ["A) Azure Portal", "B) Azure CLI", "C) ARM templates", "D) Azure Cloud Shell"],
+      correct: 2,
+      explanation: "ARM templates enable Infrastructure as Code and ensure consistent deployments across environments."
+    },
+    {
+      question: "An organization wants to manage both on-premises and Azure resources from a single control plane. Which service should they use?",
+      options: ["A) Azure Resource Manager", "B) Azure Arc", "C) Azure Monitor", "D) Azure Advisor"],
+      correct: 1,
+      explanation: "Azure Arc extends Azure management capabilities to on-premises and multi-cloud resources."
+    }
+  ],
+  "Describe monitoring tools in Azure": [
+    {
+      question: "A company needs to track the performance of their Azure web application and identify slow-performing pages. Which Azure service should they implement?",
+      options: ["A) Azure Monitor", "B) Azure Service Health", "C) Application Insights", "D) Azure Advisor"],
+      correct: 2,
+      explanation: "Application Insights provides detailed application performance monitoring and can identify performance bottlenecks."
+    },
+    {
+      question: "An administrator wants to receive recommendations for optimizing Azure resource costs and performance. Which tool provides these capabilities?",
+      options: ["A) Azure Monitor", "B) Azure Advisor", "C) Azure Service Health", "D) Log Analytics"],
+      correct: 1,
+      explanation: "Azure Advisor provides personalized recommendations for cost optimization, performance, and security."
+    }
   ]
 }
 
 function getTopicSpecificFallbacks(topic: string, count: number): any[] {
-  const fallbacks = TOPIC_SPECIFIC_FALLBACKS[topic] || TOPIC_SPECIFIC_FALLBACKS["What is cloud computing?"]
+  const fallbacks = TOPIC_SPECIFIC_FALLBACKS[topic] || TOPIC_SPECIFIC_FALLBACKS["Describe cloud computing"]
   return fallbacks.slice(0, count).map((q, index) => ({
     ...q,
     id: index + 1,
@@ -229,7 +323,7 @@ function getTopicSpecificFallbacks(topic: string, count: number): any[] {
   }))
 }
 
-// 🎯 MAIN API HANDLER WITH ENHANCED TOPIC AWARENESS
+// 🎯 MAIN API HANDLER WITH COMPLETE TOPIC AWARENESS
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -244,6 +338,24 @@ export async function POST(req: NextRequest) {
     // Determine the specific topic
     const specificTopic = topicDetails?.topicTitle || domain
     console.log(`🎯 Generating ${questionCount} TOPIC-SPECIFIC questions for: "${specificTopic}"`)
+
+    // Validate that we have specifications for this topic
+    if (!AZ900_TOPIC_SPECIFICATIONS[specificTopic]) {
+      console.log(`⚠️ No specifications found for topic: "${specificTopic}". Available topics:`, Object.keys(AZ900_TOPIC_SPECIFICATIONS))
+      const fallbacks = getTopicSpecificFallbacks(specificTopic, questionCount)
+      return NextResponse.json({ 
+        questions: fallbacks,
+        metadata: {
+          certification,
+          domain: specificTopic,
+          questionCount: fallbacks.length,
+          source: 'Topic-Specific Fallback',
+          topicFocus: specificTopic,
+          isFallback: true,
+          warning: 'Topic specifications not found, using fallback questions'
+        }
+      })
+    }
 
     // Generate topic-specific prompt
     const dynamicPrompt = generateTopicSpecificPrompt(specificTopic, certification, questionCount)
@@ -341,7 +453,8 @@ export async function POST(req: NextRequest) {
         source: 'Microsoft Learn Topic-Specific',
         topicFocus: specificTopic,
         averageRelevanceScore: enhancedQuestions.reduce((sum, q) => sum + q.relevanceScore, 0) / enhancedQuestions.length,
-        highAlignmentCount: enhancedQuestions.filter(q => q.topicAlignment === 'high').length
+        highAlignmentCount: enhancedQuestions.filter(q => q.topicAlignment === 'high').length,
+        hasTopicSpecifications: true
       }
     })
 
@@ -350,7 +463,7 @@ export async function POST(req: NextRequest) {
     
     // Enhanced fallback with topic awareness
     const body = await req.json().catch(() => ({}))
-    const specificTopic = body.topicDetails?.topicTitle || body.domain || 'Cloud Concepts'
+    const specificTopic = body.topicDetails?.topicTitle || body.domain || 'Describe cloud computing'
     const fallbacks = getTopicSpecificFallbacks(specificTopic, body.questionCount || 5)
     
     return NextResponse.json({ 
