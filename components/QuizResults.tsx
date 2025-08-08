@@ -1,4 +1,5 @@
 // components/QuizResults.tsx
+import { calculateQuizMetrics, getPerformanceLevel, generateStudyRecommendations } from '../lib/utils/quiz-utils'
 import React, { useState } from 'react'
 import { 
   Trophy, Target, BookOpen, TrendingUp, AlertCircle, 
@@ -44,20 +45,8 @@ export const QuizResults: React.FC<QuizResultsProps> = ({
   const [showDetailedView, setShowDetailedView] = useState(false)
 
   // Calculate performance metrics
-  const totalQuestions = quizSession.questions.length
-  const correctAnswers = quizSession.score
-  const incorrectAnswers = totalQuestions - correctAnswers
-  const percentage = Math.round((correctAnswers / totalQuestions) * 100)
-  
-  // Get performance level
-  const getPerformanceLevel = (percentage: number) => {
-    if (percentage >= 90) return { level: 'Excellent', color: 'green', icon: '🎉' }
-    if (percentage >= 80) return { level: 'Very Good', color: 'blue', icon: '🎯' }
-    if (percentage >= 70) return { level: 'Good', color: 'yellow', icon: '👍' }
-    if (percentage >= 60) return { level: 'Fair', color: 'orange', icon: '📚' }
-    return { level: 'Needs Improvement', color: 'red', icon: '💪' }
-  }
-
+  const metrics = calculateQuizMetrics(quizSession)
+  const { totalQuestions, correctAnswers, incorrectAnswers, percentage } = metrics
   const performance = getPerformanceLevel(percentage)
 
   // Categorize questions by result
@@ -82,23 +71,8 @@ export const QuizResults: React.FC<QuizResultsProps> = ({
   const incorrectQuestions = questionAnalysis.filter(q => !q.isCorrect && q.wasAnswered)
   const unansweredQuestions = questionAnalysis.filter(q => !q.wasAnswered)
 
-  // Generate study recommendations
-  const getStudyRecommendations = () => {
-    const weakAreas = incorrectQuestions.map(q => q.domain).filter(Boolean)
-    const uniqueWeakAreas = [...new Set(weakAreas)]
-    
-    return {
-      focusAreas: uniqueWeakAreas.slice(0, 3),
-      suggestions: [
-        percentage < 70 ? "Review fundamental concepts before retaking" : null,
-        incorrectQuestions.length > 3 ? "Focus on scenario-based questions" : null,
-        unansweredQuestions.length > 0 ? "Improve time management skills" : null,
-        "Practice with official Microsoft Learn modules"
-      ].filter(Boolean)
-    }
-  }
-
-  const studyRecs = getStudyRecommendations()
+  // Generate study recommendations using utility function
+  const studyRecs = generateStudyRecommendations(incorrectQuestions, unansweredQuestions, percentage)
 
   const toggleQuestionDetails = (questionIndex: number) => {
     setExpandedQuestion(expandedQuestion === questionIndex ? null : questionIndex)

@@ -8,7 +8,6 @@ import { QuizResults } from '../components/QuizResults'
 import { calculateQuizMetrics } from '../lib/utils/quiz-utils'
 import { getWelcomeBackMessage } from '../lib/utils/message-utils'
 
-
 interface Message {
   role: 'user' | 'assistant'
   content: string
@@ -646,6 +645,15 @@ ${topics.join('\n')}
 Let's start mastering ${certName}! What topic would you like to explore first?`
   }
 }
+  const getWelcomeBackMessage = (profile: UserProfile) => {
+    if (profile.communicationStyle.tone === 'casual') {
+      return `Yo ${profile.name}! Welcome back! 🚀\n\nI remember ur style - keeping it ${profile.communicationStyle.tone} and ${profile.communicationStyle.complexity}. Ready to crush some more certs?`
+    } else if (profile.communicationStyle.tone === 'formal') {
+      return `Welcome back, ${profile.name}.\n\nI have your communication preferences configured for ${profile.communicationStyle.tone} tone with ${profile.communicationStyle.complexity} explanations.\n\nHow may I assist with your certification studies today?`
+    } else {
+      return `Hey ${profile.name}! Good to see you again!\n\nI've got your style preferences saved - ${profile.communicationStyle.tone} tone with ${profile.communicationStyle.explanationStyle}-focused learning.\n\nWhat certification are we tackling today?`
+    }
+  }
 
   const getCompletionMessage = (profile: UserProfile) => {
     const style = profile.communicationStyle
