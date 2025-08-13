@@ -6,24 +6,18 @@ import { MULTI_CLOUD_CERTIFICATIONS_2025, getCertificationsByProvider, type Cert
 import { startNewSession, canSendMessage, recordMessage, canGenerateQuiz, recordQuiz } from '../lib/sessionManager'
 import { QuizResults } from '../components/QuizResults'
 import { calculateQuizMetrics } from '../lib/utils/quiz-utils'
-import { getWelcomeBackMessage } from '../lib/utils/message-utils'
-
+import { 
+  getWelcomeBackMessage,
+  getCertificationWelcomeMessage, 
+  getErrorMessage,
+  getInitialChatMessage,
+  getCompletionMessage,
+  UserProfile  // ADD THIS TOO
+} from '../lib/utils/message-utils'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
-}
-
-interface UserProfile {
-  name: string
-  communicationStyle: {
-    tone: 'casual' | 'formal' | 'mixed'
-    complexity: 'simple' | 'detailed' | 'technical'
-    explanationStyle: 'examples' | 'step-by-step' | 'analogies' | 'direct'
-    learningPreference: 'visual' | 'conversational' | 'structured'
-  }
-  rawText: string
-  isOnboarded: boolean
 }
 
 interface QuizQuestion {
@@ -646,18 +640,6 @@ ${topics.join('\n')}
 Let's start mastering ${certName}! What topic would you like to explore first?`
   }
 }
-
-  const getCompletionMessage = (profile: UserProfile) => {
-    const style = profile.communicationStyle
-    
-    if (style.tone === 'casual') {
-      return `Awesome ${profile.name}! 🎯\n\nI can tell you're pretty ${style.tone} and like ${style.complexity} explanations with lots of ${style.explanationStyle}.\n\nI'm gonna match your vibe from now on - no boring formal stuff! Ready to crush some cloud certs? I can help with:\n\n• AI coaching (ask me anything!)\n• Practice quizzes (I'll generate fresh questions)\n\nWhat sounds good?`
-    } else if (style.tone === 'formal') {
-      return `Excellent, ${profile.name}.\n\nI have analyzed your communication style:\n\n• Tone: Professional and ${style.tone}\n• Complexity: ${style.complexity} explanations\n• Learning: ${style.explanationStyle}-based instruction\n• Format: ${style.learningPreference} presentation\n\nI will adapt all responses accordingly. Please select your preferred study method:\n\n1. AI Coaching Sessions\n2. Practice Quiz Generation\n\nHow would you like to proceed?`
-    } else {
-      return `Perfect ${profile.name}!\n\nI've learned your style - you like ${style.complexity} explanations delivered through ${style.explanationStyle}. I'll keep things ${style.tone} but informative.\n\nReady to start? I can help with:\n\n→ AI coaching and explanations\n→ Custom practice quizzes\n\nWhat interests you most?`
-    }
-  }
 
 // ==========================================
 // 🛡️ APPEND THIS TO THE BOTTOM OF YOUR page.tsx
