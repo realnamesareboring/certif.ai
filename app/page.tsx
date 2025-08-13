@@ -20,6 +20,15 @@ import {
   getCertificationDomains,
   getCertificationColor
 } from '../lib/utils/certification-utils'  // Note: certification-utils, not certifications
+// Add to your existing imports
+import { 
+  getColorClasses,
+  getProviderIcon,
+  getFilteredCertifications,
+  toggleTheme,
+  initializeTheme,
+  getThemeClasses
+} from '../lib/utils/ui-utils'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -148,64 +157,11 @@ useEffect(() => {
   return () => clearInterval(interval)
 }, [])
 
-  const getFilteredCertifications = () => {
-    const certs = Object.values(MULTI_CLOUD_CERTIFICATIONS_2025)
-    if (selectedProvider === 'All') return certs
-    return certs.filter(cert => cert.provider === selectedProvider)
-  }
-
-  const getProviderIcon = (provider: string) => {
-    switch (provider) {
-      case 'Microsoft': return 'M'
-      case 'AWS': return 'A'  
-      case 'GCP': return 'G'
-      default: return '?'
-    }
-  }
-
-  const getColorClasses = (color: string, theme: string) => {
-    const colorMap = {
-      blue: {
-        bg: theme === 'dark' ? 'bg-blue-900/30' : 'bg-blue-50',
-        border: 'border-blue-200',
-        text: theme === 'dark' ? 'text-blue-300' : 'text-blue-700',
-        icon: 'bg-blue-500'
-      },
-      red: {
-        bg: theme === 'dark' ? 'bg-red-900/30' : 'bg-red-50',
-        border: 'border-red-200',
-        text: theme === 'dark' ? 'text-red-300' : 'text-red-700',
-        icon: 'bg-red-500'
-      },
-      orange: {
-        bg: theme === 'dark' ? 'bg-orange-900/30' : 'bg-orange-50',
-        border: 'border-orange-200',
-        text: theme === 'dark' ? 'text-orange-300' : 'text-orange-700',
-        icon: 'bg-orange-500'
-      },
-      green: {
-        bg: theme === 'dark' ? 'bg-green-900/30' : 'bg-green-50',
-        border: 'border-green-200',
-        text: theme === 'dark' ? 'text-green-300' : 'text-green-700',
-        icon: 'bg-green-500'
-      },
-      purple: {
-        bg: theme === 'dark' ? 'bg-purple-900/30' : 'bg-purple-50',
-        border: 'border-purple-200',
-        text: theme === 'dark' ? 'text-purple-300' : 'text-purple-700',
-        icon: 'bg-purple-500'
-      }
-    }
-    return colorMap[color as keyof typeof colorMap] || colorMap.blue
-  }
 
   // Load user profile and theme on component mount
   useEffect(() => {
     const savedProfile = localStorage.getItem('userProfile')
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' || 'light'
-    
-    setTheme(savedTheme)
-    document.documentElement.classList.toggle('dark', savedTheme === 'dark')
+    initializeTheme(setTheme)
     
     if (savedProfile) {
       const profile = JSON.parse(savedProfile)
@@ -253,15 +209,6 @@ const loadCertificationContent = async (certificationId: string) => {
     console.error('❌ Failed to load certification content:', error)
   }
 }
-
-
-  // Toggle theme
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light'
-    setTheme(newTheme)
-    localStorage.setItem('theme', newTheme)
-    document.documentElement.classList.toggle('dark', newTheme === 'dark')
-  }
 
   // Analyze conversation context for smart quiz suggestions using AI
   const analyzeConversationContext = async (messages: Message[]): Promise<string> => {
@@ -846,7 +793,7 @@ const testSessionLimits = () => {
           </div>
           
           <button
-            onClick={toggleTheme}
+            onClick={() => toggleTheme(theme, setTheme)}
             className={`p-3 rounded-lg transition-colors ${
               theme === 'dark' 
                 ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400' 
@@ -1866,7 +1813,7 @@ const testSessionLimits = () => {
 
               {/* Certification Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
-                {getFilteredCertifications().map((cert) => {
+                {getFilteredCertifications(selectedProvider).map((cert) => {
                   const colors = getColorClasses(cert.color, theme)
                   const isHovered = hoveredCert === cert.id
                   
@@ -2028,7 +1975,7 @@ const testSessionLimits = () => {
                 <p className={`text-sm ${
                   theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
                 }`}>
-                  💡 <strong>Currently showing {getFilteredCertifications().length} certifications</strong> 
+                  💡 <strong>Currently showing {getFilteredCertifications(selectedProvider).length} certifications</strong> 
                   {selectedProvider !== 'All' && ` from ${selectedProvider}`}
                   {' • '}Hover over any tile for detailed information and official links
                 </p>
