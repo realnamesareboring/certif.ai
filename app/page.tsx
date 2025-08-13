@@ -29,6 +29,20 @@ import {
   initializeTheme,
   getThemeClasses
 } from '../lib/utils/ui-utils'
+// Add these to your existing imports
+import { 
+  sendMessageToAPI,
+  generateTopicQuizAPI, 
+  loadCertificationContentAPI,
+  getAPIErrorMessage
+} from '../lib/utils/api-utils'
+import {
+  initializeNewSession,
+  testSessionLimits,
+  resetUserProfile,
+  loadUserProfile,
+  saveUserProfile
+} from '../lib/utils/session-utils'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -159,49 +173,29 @@ useEffect(() => {
 
 
   // Load user profile and theme on component mount
-  useEffect(() => {
-    const savedProfile = localStorage.getItem('userProfile')
-    initializeTheme(setTheme)
-    
-    if (savedProfile) {
-      const profile = JSON.parse(savedProfile)
-      setUserProfile(profile)
-      if (profile.isOnboarded) {
-        setMessages([{
-          role: 'assistant',
-          content: getWelcomeBackMessage(profile)
-        }])
-      }
-    } else {
-      setIsOnboarding(true)
+useEffect(() => {
+  const savedProfile = loadUserProfile()  // from session-utils
+  const savedTheme = initializeTheme(setTheme)  // from ui-utils (already imported)
+  
+  if (savedProfile) {
+    setUserProfile(savedProfile)
+    if (savedProfile.isOnboarded) {
+      setMessages([{
+        role: 'assistant',
+        content: getWelcomeBackMessage(savedProfile)
+      }])
     }
-  }, [])
+  } else {
+    setIsOnboarding(true)
+  }
+}, [])
 
 
 const loadCertificationContent = async (certificationId: string) => {
   try {
-    const response = await fetch('/api/load-certification-content', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ certificationId }),
-    })
-
-    if (!response.ok) throw new Error('Failed to load content')
-    const result = await response.json()
+    const { content, allTopics } = await loadCertificationContentAPI(certificationId)
     
-    setCertificationContent(result.content)
-    
-    // Extract all topics from all modules
-    const allTopics = result.content.modules.flatMap(module => 
-      module.topics.map(topic => ({
-        ...topic,
-        moduleTitle: module.title,
-        moduleId: module.moduleId,
-        estimatedTime: module.estimatedTime,
-        weight: module.weight
-      }))
-    )
-    
+    setCertificationContent(content)
     setAvailableTopics(allTopics)
     console.log(`✅ Loaded ${allTopics.length} topics for ${certificationId}`)
     
@@ -546,39 +540,19 @@ const generateQuizProtected = async (certification: string, domain: string) => {
 const generateTopicQuiz = async (certification: string, topicDetails: any) => {
   setQuizLoading(true)
   try {
-    console.log(`🎯 Generating quiz for topic: ${topicDetails.title}`)
-    
-    const response = await fetch('/api/generate-quiz', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        certification,
-        domain: topicDetails.title, // Using topic title as domain for compatibility
-        questionCount: 10,
-        topicDetails: {
-          topicTitle: topicDetails.title,
-          moduleTitle: topicDetails.moduleTitle,
-          topicId: topicDetails.id,
-          moduleId: topicDetails.moduleId
-        },
-        moduleContent: topicDetails.keyPoints || []
-      }),
-    })
-
-    if (!response.ok) throw new Error('Failed to generate topic quiz')
-    const data = await response.json()
+    const questions = await generateTopicQuizAPI(certification, topicDetails)
     
     setQuizSession({
       certification,
       domain: `${topicDetails.moduleTitle} → ${topicDetails.title}`,
-      questions: data.questions,
+      questions,
       currentQuestion: 0,
-      answers: new Array(data.questions.length).fill(null),
+      answers: new Array(questions.length).fill(null),
       score: 0,
       completed: false
     })
 
-    console.log(`✅ Generated ${data.questions.length} questions for ${topicDetails.title}`)
+    console.log(`✅ Generated ${questions.length} questions for ${topicDetails.title}`)
 
   } catch (error) {
     console.error('❌ Topic quiz generation failed:', error)
@@ -610,44 +584,31 @@ const testSessionLimits = () => {
 }
 
 
-  const sendMessage = async () => {
-    if (!input.trim()) return
+const sendMessage = async () => {
+  if (!input.trim()) return
 
-    const userMessage: Message = { role: 'user', content: input }
-    const newMessages = [...messages, userMessage]
-    setMessages(newMessages)
-    setInput('')
-    setIsLoading(true)
+  const userMessage: Message = { role: 'user', content: input }
+  const newMessages = [...messages, userMessage]
+  setMessages(newMessages)
+  setInput('')
+  setIsLoading(true)
 
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          messages: newMessages,
-          userProfile: userProfile?.communicationStyle 
-        }),
-      })
+  try {
+    const aiMessageContent = await sendMessageToAPI(newMessages, userProfile)
+    const aiMessage: Message = { role: 'assistant', content: aiMessageContent }
+    setMessages(prev => [...prev, aiMessage])
 
-      if (!response.ok) throw new Error('Failed to get response')
-      const data = await response.json()
-      
-      const aiMessage: Message = { role: 'assistant', content: data.message }
-      setMessages(prev => [...prev, aiMessage])
-
-    } catch (error) {
-      console.error('Error:', error)
-      const errorMessage: Message = { 
-        role: 'assistant', 
-        content: userProfile?.communicationStyle?.tone === 'casual' 
-          ? 'Oops! Something went wrong. Try again?' 
-          : 'I apologize, but I encountered an error. Please try again.'
-      }
-      setMessages(prev => [...prev, errorMessage])
-    } finally {
-      setIsLoading(false)
+  } catch (error) {
+    console.error('Error:', error)
+    const errorMessage: Message = { 
+      role: 'assistant', 
+      content: getAPIErrorMessage(userProfile)
     }
+    setMessages(prev => [...prev, errorMessage])
+  } finally {
+    setIsLoading(false)
   }
+}
 
   const generateQuiz = async (certification: string, domain: string) => {
     setQuizLoading(true)
@@ -724,11 +685,12 @@ const testSessionLimits = () => {
   }
 
   const resetProfile = () => {
-    localStorage.removeItem('userProfile')
+    resetUserProfile()
+    // localStorage.removeItem('userProfile')
     setUserProfile(null)
     setIsOnboarding(true)
     setMessages([])
-    setActiveTab('chat')
+    // setActiveTab('chat')
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
