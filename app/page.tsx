@@ -14,6 +14,12 @@ import {
   getCompletionMessage,
   UserProfile  // ADD THIS TOO
 } from '../lib/utils/message-utils'
+// Add to your existing imports  
+import { 
+  getPopularCertifications,
+  getCertificationDomains,
+  getCertificationColor
+} from '../lib/utils/certification-utils'  // Note: certification-utils, not certifications
 
 interface Message {
   role: 'user' | 'assistant'
@@ -53,164 +59,6 @@ interface Certification {
   color: string
 }
 
-// Expanded certification database
-const CERTIFICATIONS: Record<string, Certification> = {
-  'AZ-900': {
-    id: 'AZ-900',
-    name: 'AZ-900',
-    fullName: 'Microsoft Azure Fundamentals',
-    color: 'blue',
-    domains: [
-      {
-        name: "Cloud Concepts",
-        weight: "25-30%",
-        description: "Cloud benefits, service types, and deployment models"
-      },
-      {
-        name: "Core Azure Services", 
-        weight: "25-30%",
-        description: "Azure architecture, compute, networking, storage, databases"
-      },
-      {
-        name: "Security and Compliance",
-        weight: "25-30%", 
-        description: "Azure security features, governance, privacy, compliance"
-      },
-      {
-        name: "Azure Pricing and Support",
-        weight: "20-25%",
-        description: "Subscriptions, pricing, support options, SLAs"
-      }
-    ]
-  },
-  'SC-200': {
-    id: 'SC-200',
-    name: 'SC-200',
-    fullName: 'Microsoft Security Operations Analyst',
-    color: 'red',
-    domains: [
-      {
-        name: "Mitigate threats using Microsoft Defender XDR",
-        weight: "25-30%",
-        description: "Threat detection, investigation, and response"
-      },
-      {
-        name: "Mitigate threats using Microsoft Defender for Cloud",
-        weight: "25-30%",
-        description: "Cloud security posture management and workload protection"
-      },
-      {
-        name: "Mitigate threats using Microsoft Sentinel",
-        weight: "40-45%",
-        description: "SIEM operations, threat hunting, and incident response"
-      }
-    ]
-  },
-  'AWS-SAA': {
-    id: 'AWS-SAA',
-    name: 'AWS-SAA',
-    fullName: 'AWS Solutions Architect Associate',
-    color: 'orange',
-    domains: [
-      {
-        name: "Design Resilient Architectures",
-        weight: "26%",
-        description: "Multi-tier architectures, disaster recovery, and scalability"
-      },
-      {
-        name: "Design High-Performing Architectures",
-        weight: "24%",
-        description: "Storage, databases, networking, and compute solutions"
-      },
-      {
-        name: "Design Secure Applications",
-        weight: "30%",
-        description: "Identity management, data protection, and infrastructure security"
-      },
-      {
-        name: "Design Cost-Optimized Architectures",
-        weight: "20%",
-        description: "Cost-effective storage, compute, and monitoring solutions"
-      }
-    ]
-  },
-  'GCP-CDL': {
-    id: 'GCP-CDL',
-    name: 'GCP-CDL',
-    fullName: 'Google Cloud Digital Leader',
-    color: 'green',
-    domains: [
-      {
-        name: "Digital Transformation with Google Cloud",
-        weight: "~10%",
-        description: "Cloud adoption, innovation, and business transformation"
-      },
-      {
-        name: "Innovating with Data and Google Cloud",
-        weight: "~30%",
-        description: "Data lifecycle, analytics, and ML/AI solutions"
-      },
-      {
-        name: "Infrastructure and Application Modernization",
-        weight: "~30%",
-        description: "Compute, containers, applications, and API management"
-      },
-      {
-        name: "Understanding Google Cloud Security",
-        weight: "~30%",
-        description: "Shared responsibility, compliance, and security controls"
-      }
-    ]
-  }
-}
-
-// POPULAR CERTIFICATIONS - Add this constant BEFORE your component starts
-const POPULAR_CERTIFICATIONS = [
-  {
-    id: 'SC-900',
-    name: 'SC-900',
-    fullName: 'Security, Compliance, and Identity Fundamentals',
-    level: 'Fundamentals',
-    provider: 'Microsoft',
-    color: 'bg-red-500',
-    description: 'Security fundamentals and Microsoft security services',
-    averageSalary: '$65,000 - $85,000',
-    icon: 'M'
-  },
-  {
-    id: 'AZ-900',
-    name: 'AZ-900', 
-    fullName: 'Azure Fundamentals',
-    level: 'Fundamentals',
-    provider: 'Microsoft',
-    color: 'bg-blue-500',
-    description: 'Cloud concepts and core Azure services',
-    averageSalary: '$60,000 - $80,000',
-    icon: 'M'
-  },
-  {
-    id: 'AZ-104',
-    name: 'AZ-104',
-    fullName: 'Azure Administrator Associate', 
-    level: 'Associate',
-    provider: 'Microsoft',
-    color: 'bg-blue-600',
-    description: 'Azure administration and infrastructure management',
-    averageSalary: '$90,000 - $120,000',
-    icon: 'M'
-  },
-  {
-    id: 'CLF-C02',
-    name: 'AWS CLF-C02',
-    fullName: 'AWS Cloud Practitioner',
-    level: 'Foundational', 
-    provider: 'AWS',
-    color: 'bg-orange-500',
-    description: 'AWS cloud concepts and services fundamentals',
-    averageSalary: '$65,000 - $85,000',
-    icon: 'A'
-  }
-]
 
 export default function EnhancedPersonalizedCoach() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
@@ -970,15 +818,6 @@ const testSessionLimits = () => {
     })
   }
 
-  const getCertificationColor = (certId: string) => {
-    const colors = {
-      'AZ-900': 'blue',
-      'SC-200': 'red', 
-      'AWS-SAA': 'orange',
-      'GCP-CDL': 'green'
-    }
-    return colors[certId as keyof typeof colors] || 'blue'
-  }
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
@@ -1122,7 +961,7 @@ const testSessionLimits = () => {
 
         {/* Popular Certifications Grid */}
         <div className="grid md:grid-cols-2 gap-4 mb-6">
-          {POPULAR_CERTIFICATIONS.map((cert) => (
+          {getPopularCertifications().map((cert) => (
             <div
               key={cert.id}
               onClick={() => setSelectedCertification(cert.id)}
@@ -1203,7 +1042,7 @@ const testSessionLimits = () => {
                 <div className="flex items-center">
                   <Target className="w-5 h-5 mr-2" />
                   <span className="font-medium">
-                    Smart Suggestion: Based on our conversation, I recommend starting with {CERTIFICATIONS[suggestedCertification]?.fullName}
+                    Smart Suggestion: Based on our conversation, I recommend starting with {getCertificationDomains[suggestedCertification]?.fullName}
                   </span>
                 </div>
               </div>
@@ -1359,7 +1198,7 @@ const testSessionLimits = () => {
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Object.values(CERTIFICATIONS).map(cert => (
+          {Object.values(MULTI_CLOUD_CERTIFICATIONS_2025).slice(0, 4).map(cert => (
             <button
               key={cert.id}
               onClick={async () => {
@@ -1409,7 +1248,7 @@ const testSessionLimits = () => {
             <h3 className={`text-xl font-bold ${
               theme === 'dark' ? 'text-white' : 'text-gray-800'
             }`}>
-              {CERTIFICATIONS[selectedCertification]?.fullName}
+              {getCertificationDomains[selectedCertification]?.fullName}
             </h3>
             <p className={`text-sm ${
               theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
