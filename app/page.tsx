@@ -49,6 +49,7 @@ import {
   loadUserProfile,
   saveUserProfile
 } from '../lib/utils/session-utils'
+import OnboardingComponent from '../components/OnboardingComponent'
 
 
 export default function EnhancedPersonalizedCoach() {
@@ -735,175 +736,27 @@ const sendMessage = async () => {
           </button>
         </div>
 
-// REPLACE IT WITH this enhanced version:
-{/* Enhanced Onboarding Flow */}
+
 {isOnboarding && (
-  <div className={`max-w-2xl mx-auto rounded-lg shadow-lg p-8 ${
-    theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-  }`}>
-    
-    {/* Progress Indicator */}
-    <div className="flex items-center justify-center mb-8">
-      <div className="flex items-center">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-          onboardingStep >= 1 
-            ? 'bg-blue-500 text-white' 
-            : 'bg-gray-200 text-gray-600'
-        }`}>1</div>
-        <div className={`w-16 h-1 ${onboardingStep >= 2 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-          onboardingStep >= 2 
-            ? 'bg-blue-500 text-white' 
-            : 'bg-gray-200 text-gray-600'
-        }`}>2</div>
-        <div className={`w-16 h-1 ${onboardingStep >= 3 ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-          onboardingStep >= 3 
-            ? 'bg-blue-500 text-white' 
-            : 'bg-gray-200 text-gray-600'
-        }`}>3</div>
-      </div>
-    </div>
-
-    {/* Step 1: Communication Style Analysis */}
-    {onboardingStep === 1 && (
-      <>
-        <div className="text-center mb-8">
-          <User className={`w-16 h-16 mx-auto mb-4 ${
-            theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-          }`} />
-          <h2 className={`text-2xl font-bold mb-4 ${
-            theme === 'dark' ? 'text-white' : 'text-gray-800'
-          }`}>
-            Let's Personalize Your Learning
-          </h2>
-          <p className={`${
-            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-          }`}>
-            Paste a sample of your natural writing so I can adapt to your communication style:
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          <textarea
-            value={textSample}
-            onChange={(e) => setTextSample(e.target.value)}
-            placeholder="Paste any text you've written naturally - an email, message, or note..."
-            className={`w-full h-32 p-4 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              theme === 'dark' 
-                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                : 'bg-white border-gray-300 text-gray-900'
-            }`}
-            rows={4}
-          />
-          
-          <div className="flex justify-center space-x-4">
-            <button
-              onClick={analyzeStyleAndContinue}
-              disabled={isAnalyzing || textSample.length < 15}
-              className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-8 py-3 rounded-lg font-medium transition-colors flex items-center"
-            >
-              {isAnalyzing ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Analyzing Style...
-                </>
-              ) : (
-                'Continue →'
-              )}
-            </button>
-          </div>
-        </div>
-      </>
-    )}
-
-    {/* Step 2: Certification Selection */}
-    {onboardingStep === 2 && (
-      <>
-        <div className="text-center mb-8">
-          <Target className={`w-16 h-16 mx-auto mb-4 ${
-            theme === 'dark' ? 'text-green-400' : 'text-green-600'
-          }`} />
-          <h2 className={`text-2xl font-bold mb-4 ${
-            theme === 'dark' ? 'text-white' : 'text-gray-800'
-          }`}>
-            Which Certification Are You Studying For?
-          </h2>
-          <p className={`${
-            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-          }`}>
-            I'll become your dedicated tutor for this specific exam:
-          </p>
-        </div>
-
-        {/* Popular Certifications Grid */}
-        <div className="grid md:grid-cols-2 gap-4 mb-6">
-          {getPopularCertifications().map((cert) => (
-            <div
-              key={cert.id}
-              onClick={() => setSelectedCertification(cert.id)}
-              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                selectedCertification === cert.id
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-gray-200 hover:border-blue-300 dark:border-gray-600 dark:hover:border-blue-400'
-              }`}
-            >
-              <div className="flex items-center mb-3">
-                <div className={`w-10 h-10 ${cert.color} rounded-lg flex items-center justify-center text-white font-bold text-sm mr-3`}>
-                  {cert.icon}
-                </div>
-                <div>
-                  <h3 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                    {cert.name}
-                  </h3>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                    {cert.level}
-                  </p>
-                </div>
-              </div>
-              <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                {cert.description}
-              </p>
-              <div className="text-xs text-green-600 font-medium">
-                💰 {cert.averageSalary}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Continue Button */}
-        {selectedCertification && (
-          <div className="flex justify-center mt-6">
-            <button
-              onClick={finalizeCertificationChoice}
-              className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg font-medium transition-colors"
-            >
-              Start Learning {selectedCertification} →
-            </button>
-          </div>
-        )}
-      </>
-    )}
-
-    {/* Step 3: Loading Official Content */}
-    {onboardingStep === 3 && (
-      <>
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <h2 className={`text-2xl font-bold mb-4 ${
-            theme === 'dark' ? 'text-white' : 'text-gray-800'
-          }`}>
-            Loading {selectedCertification} Content...
-          </h2>
-          <p className={`${
-            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-          }`}>
-            Fetching the latest materials from Microsoft Learn...
-          </p>
-        </div>
-      </>
-    )}
-  </div>
+  <OnboardingComponent
+    theme={theme}
+    onComplete={(profile) => {
+      setUserProfile(profile)
+      setIsOnboarding(false)
+      
+      // Use your existing imported getCertificationWelcomeMessage
+      setMessages([{
+        role: 'assistant',
+        content: getCertificationWelcomeMessage(profile, profile.certificationContent)
+      }])
+      
+      // Initialize session if available
+      if (typeof initializeSession === 'function') {
+        initializeSession()
+      }
+    }}
+    onThemeToggle={toggleTheme}
+  />
 )}
 
         {/* Main Interface */}
