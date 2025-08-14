@@ -11,9 +11,15 @@ import {
   getCertificationWelcomeMessage, 
   getErrorMessage,
   getInitialChatMessage,
-  getCompletionMessage,
-  UserProfile  // ADD THIS TOO
+  getCompletionMessage
 } from '../lib/utils/message-utils'
+import type { 
+  ChatMessage as Message,
+  QuizQuestion,
+  QuizSession,
+  CertificationDomain,
+  UserProfile
+} from '../types'
 // Add to your existing imports  
 import { 
   getPopularCertifications,
@@ -43,44 +49,6 @@ import {
   loadUserProfile,
   saveUserProfile
 } from '../lib/utils/session-utils'
-
-interface Message {
-  role: 'user' | 'assistant'
-  content: string
-}
-
-interface QuizQuestion {
-  id: number
-  question: string
-  options: string[]
-  correct: number
-  explanation: string
-  domain: string
-}
-
-interface QuizSession {
-  certification: string
-  domain: string
-  questions: QuizQuestion[]
-  currentQuestion: number
-  answers: (number | null)[]
-  score: number
-  completed: boolean
-}
-
-interface CertificationDomain {
-  name: string
-  weight: string
-  description: string
-}
-
-interface Certification {
-  id: string
-  name: string
-  fullName: string
-  domains: CertificationDomain[]
-  color: string
-}
 
 
 export default function EnhancedPersonalizedCoach() {
@@ -2066,175 +2034,3 @@ const sendMessage = async () => {
     </div>
   )
 }
-// // ==========================================
-// // 🛡️ APPEND THIS TO THE BOTTOM OF YOUR page.tsx
-// // (Before the final closing brace and export)
-// // ==========================================
-
-// // 1. ADD THE IMPORT AT THE TOP (just add this one line to your existing imports)
-// // import { startNewSession, canSendMessage, recordMessage, canGenerateQuiz, recordQuiz } from '../lib/sessionManager'
-
-// // 2. APPEND THESE FUNCTIONS TO THE BOTTOM (before the final return statement)
-
-// // 🛡️ Protected wrapper for your existing sendMessage function
-// const sendMessageProtected = async () => {
-//   if (!input.trim()) return
-
-//   // Check session limits first
-//   const messageCheck = canSendMessage()
-//   if (!messageCheck.allowed) {
-//     alert(messageCheck.reason)
-//     return
-//   }
-
-//   // Call your existing sendMessage logic
-//   const userMessage: Message = { role: 'user', content: input }
-//   const newMessages = [...messages, userMessage]
-//   setMessages(newMessages)
-//   setInput('')
-//   setIsLoading(true)
-
-//   try {
-//     // Record the message for tracking
-//     recordMessage()
-    
-//     const response = await fetch('/api/chat', {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ 
-//         messages: newMessages,
-//         userProfile: userProfile?.communicationStyle 
-//       }),
-//     })
-
-//     if (!response.ok) throw new Error('Failed to get response')
-//     const data = await response.json()
-    
-//     const aiMessage: Message = { role: 'assistant', content: data.message }
-//     setMessages(prev => [...prev, aiMessage])
-
-//   } catch (error) {
-//     console.error('Error:', error)
-//     const errorMessage: Message = { 
-//       role: 'assistant', 
-//       content: userProfile?.communicationStyle?.tone === 'casual' 
-//         ? 'Oops! Something went wrong. Try again?' 
-//         : 'I apologize, but I encountered an error. Please try again.'
-//     }
-//     setMessages(prev => [...prev, errorMessage])
-//   } finally {
-//     setIsLoading(false)
-//   }
-// }
-
-// // 🛡️ Protected wrapper for your existing generateQuiz function  
-// const generateQuizProtected = async (certification: string, domain: string) => {
-//   // Check quiz limits first
-//   const quizCheck = canGenerateQuiz()
-//   if (!quizCheck.allowed) {
-//     alert(quizCheck.reason)
-//     return
-//   }
-
-//   setQuizLoading(true)
-//   try {
-//     // Record the quiz for tracking
-//     recordQuiz()
-    
-//     const response = await fetch('/api/generate-quiz', {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ 
-//         certification,
-//         domain,
-//         questionCount: 10,
-//         userProfile: userProfile?.communicationStyle
-//       }),
-//     })
-
-//     if (!response.ok) throw new Error('Failed to generate quiz')
-//     const data = await response.json()
-    
-//     setQuizSession({
-//       certification,
-//       domain,
-//       questions: data.questions,
-//       currentQuestion: 0,
-//       answers: new Array(data.questions.length).fill(null),
-//       score: 0,
-//       completed: false
-//     })
-
-//   } catch (error) {
-//     console.error('Quiz generation error:', error)
-//   } finally {
-//     setQuizLoading(false)
-//   }
-// }
-
-// // ADD this new function to generate topic-specific quizzes
-// const generateTopicQuiz = async (certification: string, topicDetails: any) => {
-//   setQuizLoading(true)
-//   try {
-//     console.log(`🎯 Generating quiz for topic: ${topicDetails.title}`)
-    
-//     const response = await fetch('/api/generate-quiz', {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({ 
-//         certification,
-//         domain: topicDetails.title, // Using topic title as domain for compatibility
-//         questionCount: 10,
-//         topicDetails: {
-//           topicTitle: topicDetails.title,
-//           moduleTitle: topicDetails.moduleTitle,
-//           topicId: topicDetails.id,
-//           moduleId: topicDetails.moduleId
-//         },
-//         moduleContent: topicDetails.keyPoints || []
-//       }),
-//     })
-
-//     if (!response.ok) throw new Error('Failed to generate topic quiz')
-//     const data = await response.json()
-    
-//     setQuizSession({
-//       certification,
-//       domain: `${topicDetails.moduleTitle} → ${topicDetails.title}`,
-//       questions: data.questions,
-//       currentQuestion: 0,
-//       answers: new Array(data.questions.length).fill(null),
-//       score: 0,
-//       completed: false
-//     })
-
-//     console.log(`✅ Generated ${data.questions.length} questions for ${topicDetails.title}`)
-
-//   } catch (error) {
-//     console.error('❌ Topic quiz generation failed:', error)
-//   } finally {
-//     setQuizLoading(false)
-//   }
-// }
-
-// // 🛡️ Initialize session (add this to your existing useEffect or call it separately)
-// const initializeSession = () => {
-//   console.log('🔍 initializeSession called')
-//   const sessionId = `session_${Date.now()}`
-//   const session = {
-//     sessionId,
-//     startTime: Date.now(),
-//     lastActivity: Date.now(),
-//     messageCount: 0,
-//     quizCount: 0
-//   }
-//   localStorage.setItem('currentSession', JSON.stringify(session))
-//   console.log('🟢 Session created:', session)
-//   console.log('🔍 localStorage now has:', localStorage.getItem('currentSession'))
-// }
-
-// // 🛡️ Test functions (you can call these from browser console to test)
-// const testSessionLimits = () => {
-//   console.log('Message check:', canSendMessage())
-//   console.log('Quiz check:', canGenerateQuiz())
-// }

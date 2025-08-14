@@ -1,20 +1,7 @@
 // lib/utils/message-utils.ts
 // Ultra-safe message utility extraction from page.tsx
 // Following the proven pattern from quiz-utils.ts
-
-export interface UserProfile {
-  name: string;
-  targetCertification: string;
-  communicationStyle: {
-    tone: 'casual' | 'formal' | 'mixed';
-    complexity: 'simple' | 'detailed' | 'technical';
-    explanationStyle: 'examples' | 'step-by-step' | 'analogies' | 'direct';
-    learningPreference: 'visual' | 'conversational' | 'structured';
-  };
-  certificationContent?: any;
-  rawText?: string;
-  isOnboarded: boolean;
-}
+import type { UserProfile } from '../../types'
 
 /**
  * Generate welcome back message based on user's communication style

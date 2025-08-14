@@ -6,34 +6,12 @@ import {
   CheckCircle, XCircle, RotateCcw, ChevronDown, ChevronRight,
   Clock, Award, Brain, ArrowRight, Download, Share
 } from 'lucide-react'
+import type { 
+  QuizQuestion,
+  QuizSession,
+  QuizResultsProps
+} from '../types'
 
-interface QuizQuestion {
-  id: number
-  question: string
-  options: string[]
-  correct: number
-  explanation: string
-  domain?: string
-  topicAlignment?: string
-  relevanceScore?: number
-}
-
-interface QuizSession {
-  certification: string
-  domain: string
-  questions: QuizQuestion[]
-  answers: (number | null)[]
-  score: number
-  completed: boolean
-  currentQuestion: number
-}
-
-interface QuizResultsProps {
-  quizSession: QuizSession
-  onResetQuiz: () => void
-  onRetakeQuiz?: () => void
-  theme: 'light' | 'dark'
-}
 
 export const QuizResults: React.FC<QuizResultsProps> = ({ 
   quizSession, 

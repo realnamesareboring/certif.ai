@@ -3,18 +3,17 @@
 
 // 👤 User and Profile Types
 export interface UserProfile {
-  name: string
+  name: string;
+  targetCertification: string;
   communicationStyle: {
-    tone: 'casual' | 'formal' | 'friendly'
-    complexity: string
-    technicalLevel?: string
-    preferredExplanationStyle?: string
-  }
-  targetCertification: string
-  isOnboarded: boolean
-  experience?: string
-  goals?: string[]
-  learningPreferences?: string[]
+    tone: 'casual' | 'formal' | 'mixed';
+    complexity: 'simple' | 'detailed' | 'technical';
+    explanationStyle: 'examples' | 'step-by-step' | 'analogies' | 'direct';
+    learningPreference: 'visual' | 'conversational' | 'structured';
+  };
+  certificationContent?: any;
+  rawText?: string;
+  isOnboarded: boolean;
 }
 
 // 💬 Chat and Message Types
