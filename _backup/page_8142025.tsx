@@ -116,28 +116,28 @@ useEffect(() => {
   
   checkSession()
   
-//   // Add one debug function to window for testing
-//   if (typeof window !== 'undefined') {
-//     window.debugQuiz = async () => {
-//       console.log('🧪 Testing quiz API...')
-//       try {
-//         const response = await fetch('/api/generate-quiz', {
-//           method: 'POST',
-//           headers: { 'Content-Type': 'application/json' },
-//           body: JSON.stringify({
-//             certification: 'AZ-900',
-//             domain: 'Cloud Concepts',
-//             questionCount: 3
-//           })
-//         })
-//         console.log('Status:', response.status)
-//         const data = await response.json()
-//         console.log('Response:', data)
-//       } catch (error) {
-//         console.error('Error:', error)
-//       }
-//     }
-//   }
+  // Add one debug function to window for testing
+  if (typeof window !== 'undefined') {
+    window.debugQuiz = async () => {
+      console.log('🧪 Testing quiz API...')
+      try {
+        const response = await fetch('/api/generate-quiz', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            certification: 'AZ-900',
+            domain: 'Cloud Concepts',
+            questionCount: 3
+          })
+        })
+        console.log('Status:', response.status)
+        const data = await response.json()
+        console.log('Response:', data)
+      } catch (error) {
+        console.error('Error:', error)
+      }
+    }
+  }
   
   const interval = setInterval(checkSession, 60000)
   return () => clearInterval(interval)
@@ -399,30 +399,30 @@ const generateQuizProtected = async (certification: string, domain: string) => {
   }
 }
 
-// ADD this new function to generate topic-specific quizzes
-const generateTopicQuiz = async (certification: string, topicDetails: any) => {
-  setQuizLoading(true)
-  try {
-    const questions = await generateTopicQuizAPI(certification, topicDetails)
+// // ADD this new function to generate topic-specific quizzes
+// const generateTopicQuiz = async (certification: string, topicDetails: any) => {
+//   setQuizLoading(true)
+//   try {
+//     const questions = await generateTopicQuizAPI(certification, topicDetails)
     
-    setQuizSession({
-      certification,
-      domain: `${topicDetails.moduleTitle} → ${topicDetails.title}`,
-      questions,
-      currentQuestion: 0,
-      answers: new Array(questions.length).fill(null),
-      score: 0,
-      completed: false
-    })
+//     setQuizSession({
+//       certification,
+//       domain: `${topicDetails.moduleTitle} → ${topicDetails.title}`,
+//       questions,
+//       currentQuestion: 0,
+//       answers: new Array(questions.length).fill(null),
+//       score: 0,
+//       completed: false
+//     })
 
-    console.log(`✅ Generated ${questions.length} questions for ${topicDetails.title}`)
+//     console.log(`✅ Generated ${questions.length} questions for ${topicDetails.title}`)
 
-  } catch (error) {
-    console.error('❌ Topic quiz generation failed:', error)
-  } finally {
-    setQuizLoading(false)
-  }
-}
+//   } catch (error) {
+//     console.error('❌ Topic quiz generation failed:', error)
+//   } finally {
+//     setQuizLoading(false)
+//   }
+// }
 
 // 🛡️ Initialize session (add this to your existing useEffect or call it separately)
 const initializeSession = () => {
@@ -665,25 +665,16 @@ const testSessionLimits = () => {
             />
           )}
 
-{/* Enhanced Microsoft Learn Topics Interface */}
-{activeTab === 'quiz' && !quizSession && (
-  <div className="space-y-6">
-    <div className={`text-center p-8 rounded-lg ${
-      theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-    } shadow-lg`}>
-      <Target className="w-16 h-16 mx-auto mb-4 text-blue-500" />
-      <h2 className={`text-2xl font-bold mb-2 ${
-        theme === 'dark' ? 'text-white' : 'text-gray-800'
-      }`}>
-        Microsoft Learn Practice Quiz
-      </h2>
-      <p className={`${
-        theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-      }`}>
-        Select a specific topic from the official Microsoft Learn curriculum
-      </p>
-    </div>
-
+{/* Quiz Interface */}
+{activeTab === 'quiz' && (
+  <QuizInterface
+    theme={theme}
+    userProfile={userProfile}
+    onQuizComplete={(session) => {
+      console.log('Quiz completed:', session)
+    }}
+  />
+)}
     {/* Certification Selection for Quiz */}
     {(!selectedCertification || !availableTopics.length) && (
       <div className={`p-6 rounded-lg shadow-lg ${
