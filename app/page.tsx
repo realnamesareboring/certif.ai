@@ -50,6 +50,7 @@ import {
   saveUserProfile
 } from '../lib/utils/session-utils'
 import OnboardingComponent from '../components/OnboardingComponent'
+import ChatInterface from '../components/ChatInterface'
 
 
 export default function EnhancedPersonalizedCoach() {
@@ -60,8 +61,8 @@ export default function EnhancedPersonalizedCoach() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [activeTab, setActiveTab] = useState<'chat' | 'quiz'>('chat')
   const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  // const [input, setInput] = useState('')
+  // const [isLoading, setIsLoading] = useState(false)
   const [selectedCertification, setSelectedCertification] = useState<string>('')
   const [selectedDomain, setSelectedDomain] = useState<string>('')
   const [quizSession, setQuizSession] = useState<QuizSession | null>(null)
@@ -232,115 +233,6 @@ const loadCertificationContent = async (certificationId: string) => {
     setActiveTab(tab)
   }
 
-// Replace your existing analyzeStyle function with this enhanced version:
-
-const analyzeStyleAndContinue = async () => {
-  if (!textSample || textSample.length < 15) return
-
-  setIsAnalyzing(true)
-  try {
-    const response = await fetch('/api/analyze-style', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ textSample }),
-    })
-
-    if (!response.ok) throw new Error('Analysis failed')
-    const result = await response.json()
-
-    // Store the communication style temporarily
-    setUserProfile(prev => ({
-      ...prev,
-      communicationStyle: result.style,
-      rawText: textSample
-    }))
-
-    // Move to certification selection
-    setOnboardingStep(2)
-    
-  } catch (error) {
-    console.error('Style analysis failed:', error)
-    // Still continue to cert selection with defaults
-    setOnboardingStep(2)
-  } finally {
-    setIsAnalyzing(false)
-  }
-}
-
-// ADD this new function:
-// REPLACE your entire finalizeCertificationChoice function with this:
-
-const finalizeCertificationChoice = async () => {
-  setOnboardingStep(3)
-  
-  try {
-    // Load official Microsoft Learn content for the selected certification
-    console.log(`🔄 Loading content for ${selectedCertification}...`)
-    
-    const response = await fetch('/api/load-certification-content', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        certificationId: selectedCertification,
-        communicationStyle: userProfile?.communicationStyle 
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to load certification content')
-    }
-    
-    const result = await response.json()
-    console.log('✅ Content loaded successfully:', result.message)
-
-    // Complete onboarding with certification-specific profile + official content
-    const finalProfile = {
-      name: 'User',
-      targetCertification: selectedCertification,
-      certificationContent: result.content, // Store the official content
-      communicationStyle: userProfile?.communicationStyle,
-      rawText: textSample,
-      isOnboarded: true
-    }
-
-    setUserProfile(finalProfile)
-    localStorage.setItem('userProfile', JSON.stringify(finalProfile))
-    setIsOnboarding(false)
-
-    // Start with certification-specific welcome message using OFFICIAL content
-    setMessages([{
-      role: 'assistant',
-      content: getCertificationWelcomeMessage(finalProfile, result.content)
-    }])
-
-    // Initialize session
-    if (typeof initializeSession === 'function') {
-      initializeSession()
-    }
-
-  } catch (error) {
-    console.error('❌ Content loading failed:', error)
-    
-    // Still complete onboarding but without official content
-    const fallbackProfile = {
-      name: 'User',
-      targetCertification: selectedCertification,
-      communicationStyle: userProfile?.communicationStyle,
-      rawText: textSample,
-      isOnboarded: true
-    }
-
-    setUserProfile(fallbackProfile)
-    localStorage.setItem('userProfile', JSON.stringify(fallbackProfile))
-    setIsOnboarding(false)
-
-    // Generic welcome message as fallback
-    setMessages([{
-      role: 'assistant',
-      content: `Welcome! I'll help you study for ${selectedCertification}. What would you like to learn about?`
-    }])
-  }
-}
 
 // ADD this new function:
 // REPLACE your getCertificationWelcomeMessage function with this:
@@ -553,32 +445,6 @@ const testSessionLimits = () => {
 }
 
 
-const sendMessage = async () => {
-  if (!input.trim()) return
-
-  const userMessage: Message = { role: 'user', content: input }
-  const newMessages = [...messages, userMessage]
-  setMessages(newMessages)
-  setInput('')
-  setIsLoading(true)
-
-  try {
-    const aiMessageContent = await sendMessageToAPI(newMessages, userProfile)
-    const aiMessage: Message = { role: 'assistant', content: aiMessageContent }
-    setMessages(prev => [...prev, aiMessage])
-
-  } catch (error) {
-    console.error('Error:', error)
-    const errorMessage: Message = { 
-      role: 'assistant', 
-      content: getAPIErrorMessage(userProfile)
-    }
-    setMessages(prev => [...prev, errorMessage])
-  } finally {
-    setIsLoading(false)
-  }
-}
-
   const generateQuiz = async (certification: string, domain: string) => {
     setQuizLoading(true)
     try {
@@ -660,40 +526,6 @@ const sendMessage = async () => {
     setIsOnboarding(true)
     setMessages([])
     // setActiveTab('chat')
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
-  }
-
-  // Format message content with proper line breaks and structure
-  const formatMessage = (content: string) => {
-    const lines = content.split(/\n|\r\n|\r/)
-    
-    return lines.map((line, index) => {
-      const trimmedLine = line.trim()
-      
-      if (!trimmedLine) {
-        return <br key={index} />
-      }
-      
-      if (/^[A-D]\)/.test(trimmedLine)) {
-        return (
-          <div key={index} className="ml-4 my-1 font-medium">
-            {trimmedLine}
-          </div>
-        )
-      }
-      
-      return (
-        <div key={index} className="mb-2">
-          {trimmedLine}
-        </div>
-      )
-    })
   }
 
 
@@ -820,82 +652,16 @@ const sendMessage = async () => {
               </div>
             </div>
 
-            {/* Chat Interface */}
-            {activeTab === 'chat' && (
-              <div className={`rounded-lg shadow-lg overflow-hidden ${
-                theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-              }`}>
-                <div className="h-96 overflow-y-auto p-6 space-y-4">
-                  {messages.map((message, index) => (
-                    <div
-                      key={index}
-                      className={`flex ${
-                        message.role === 'user' ? 'justify-end' : 'justify-start'
-                      }`}
-                    >
-                      <div
-                        className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-3 rounded-lg ${
-                          message.role === 'user'
-                            ? 'bg-blue-500 text-white'
-                            : (theme === 'dark' 
-                                ? 'bg-gray-700 text-gray-200' 
-                                : 'bg-gray-100 text-gray-800'
-                              )
-                        }`}
-                      >
-                        <div className="text-sm leading-relaxed">
-                          {formatMessage(message.content)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <div className={`px-4 py-3 rounded-lg ${
-                        theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        <div className="flex space-x-1 items-center">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className={`border-t p-4 ${
-                  theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
-                }`}>
-                  <div className="flex space-x-2">
-                    <textarea
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder={
-                        userProfile.communicationStyle.tone === 'casual' 
-                          ? "Ask me anything about cloud stuff..."
-                          : "Ask me about cloud certifications..."
-                      }
-                      className={`flex-1 border rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        theme === 'dark' 
-                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                          : 'bg-white border-gray-300 text-gray-900'
-                      }`}
-                      rows={2}
-                      disabled={isLoading}
-                    />
-                    <button
-                      onClick={sendMessage}
-                      disabled={isLoading || !input.trim()}
-                      className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-                    >
-                      Send
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+          {/* Chat Interface */}
+          {activeTab === 'chat' && (
+            <ChatInterface
+              theme={theme}
+              userProfile={userProfile}
+              messages={messages}
+              onMessagesUpdate={setMessages}
+              disabled={!userProfile?.isOnboarded}
+            />
+          )}
 
 {/* Enhanced Microsoft Learn Topics Interface */}
 {activeTab === 'quiz' && !quizSession && (
