@@ -862,6 +862,176 @@ const testSessionLimits = () => {
       </div>
     )}
 
+    {/* Selected Topic Quiz Generation */}
+    {selectedTopicDetails && (
+      <div className={`p-6 rounded-lg shadow-lg ${
+        theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+      }`}>
+        <div className="text-center">
+          <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium mb-4 ${
+            theme === 'dark' 
+              ? 'bg-blue-900/30 text-blue-300' 
+              : 'bg-blue-100 text-blue-700'
+          }`}>
+            {selectedTopicDetails.moduleTitle}
+          </div>
+          
+          <h3 className={`text-xl font-bold mb-2 ${
+            theme === 'dark' ? 'text-white' : 'text-gray-800'
+          }`}>
+            📖 {selectedTopicDetails.title}
+          </h3>
+          
+          <p className={`mb-4 ${
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+          }`}>
+            {selectedTopicDetails.description}
+          </p>
+
+          {/* Topic Key Points */}
+          {selectedTopicDetails.keyPoints && (
+            <div className={`text-left p-4 rounded-lg mb-6 ${
+              theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'
+            }`}>
+              <p className={`text-sm font-medium mb-2 ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+              }`}>
+                This quiz will cover:
+              </p>
+              <ul className={`text-sm space-y-1 ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                {selectedTopicDetails.keyPoints.map((point, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="mr-2">✓</span>
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="flex justify-center space-x-4">
+            <button
+              onClick={() => setSelectedTopicDetails(null)}
+              className={`px-6 py-2 rounded-lg transition-colors ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+              }`}
+            >
+              ← Back to Topics
+            </button>
+            
+            <button
+              onClick={() => generateTopicQuiz(selectedCertification, selectedTopicDetails)}
+              disabled={quizLoading}
+              className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-8 py-2 rounded-lg font-medium transition-colors flex items-center"
+            >
+              {quizLoading ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Target className="w-4 h-4 mr-2" />
+                  Generate 10 Questions
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+)}
+
+                {/* Quiz Session Display */}
+                {quizSession && !quizSession.completed && (
+                  <div className={`rounded-lg shadow-lg p-6 ${
+                    theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+                  }`}>
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className={`text-xl font-bold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-800'
+                      }`}>
+                        {quizSession.certification} - {quizSession.domain}
+                      </h2>
+                      <span className={`text-sm ${
+                        theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                      }`}>
+                        Question {quizSession.currentQuestion + 1} of {quizSession.questions.length}
+                      </span>
+                    </div>
+
+                    <div className="mb-6">
+                      <div className={`w-full bg-gray-200 rounded-full h-2 mb-4 ${
+                        theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                      }`}>
+                        <div 
+                          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                          style={{ 
+                            width: `${((quizSession.currentQuestion + 1) / quizSession.questions.length) * 100}%` 
+                          }}
+                        ></div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className={`text-lg font-medium leading-relaxed ${
+                          theme === 'dark' ? 'text-white' : 'text-gray-800'
+                        }`}>
+                          {quizSession.questions[quizSession.currentQuestion]?.question}
+                        </h3>
+
+                        <div className="space-y-2">
+                          {quizSession.questions[quizSession.currentQuestion]?.options.map((option, index) => (
+                            <button
+                              key={index}
+                              onClick={() => answerQuestion(index)}
+                              className={`w-full text-left p-4 border-2 rounded-lg transition-all ${
+                                quizSession.answers[quizSession.currentQuestion] === index
+                                  ? (theme === 'dark' 
+                                      ? 'border-blue-400 bg-blue-900/20' 
+                                      : 'border-blue-500 bg-blue-50'
+                                    )
+                                  : (theme === 'dark' 
+                                      ? 'border-gray-600 hover:border-gray-500' 
+                                      : 'border-gray-200 hover:border-blue-300'
+                                    )
+                              }`}
+                            >
+                              <span className="font-medium mr-3">{String.fromCharCode(65 + index)}.</span>
+                              {option}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between mt-6">
+                        <button
+                          onClick={resetQuiz}
+                          className={`px-6 py-2 rounded-lg transition-colors ${
+                            theme === 'dark' 
+                              ? 'bg-gray-600 hover:bg-gray-500 text-white' 
+                              : 'bg-gray-500 hover:bg-gray-600 text-white'
+                          }`}
+                        >
+                          Exit Quiz
+                        </button>
+                        
+                        <button
+                          onClick={nextQuestion}
+                          disabled={quizSession.answers[quizSession.currentQuestion] === null}
+                          className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white px-6 py-2 rounded-lg flex items-center transition-colors"
+                        >
+                          {quizSession.currentQuestion === quizSession.questions.length - 1 ? 'Finish Quiz' : 'Next Question'}
+                          <ChevronRight className="w-4 h-4 ml-2" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Enhanced Quiz Results */}
                 {quizSession && quizSession.completed && (
