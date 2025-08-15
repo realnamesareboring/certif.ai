@@ -1,10 +1,18 @@
-import React, { useState, useEffect } from 'react'
-import { Target, ChevronRight, BookOpen, Clock, Award } from 'lucide-react'
-import type { QuizSession, QuizQuestion, UserProfile, Theme, Certification } from '../types'
-import { MULTI_CLOUD_CERTIFICATIONS_2025 } from '../lib/certifications'
-import { getColorClasses, getProviderIcon } from '../lib/utils/ui-utils'
-import { generateTopicQuizAPI, loadCertificationContentAPI } from '../lib/utils/api-utils'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Brain, Target, ChevronRight, BookOpen, Award, Clock } from 'lucide-react'
+import { MULTI_CLOUD_CERTIFICATIONS_2025, getCertificationsByProvider } from '../lib/certifications'
+import { canGenerateQuiz, recordQuiz } from '../lib/sessionManager'
 import { QuizResults } from './QuizResults'
+import { loadCertificationContentAPI, generateTopicQuizAPI } from '../lib/utils/api-utils'
+import type { 
+  QuizSession, 
+  UserProfile, 
+  Theme, 
+  TopicDetails, 
+  CertificationContent 
+} from '../types'
 
 interface QuizInterfaceProps {
   theme: Theme
@@ -12,89 +20,80 @@ interface QuizInterfaceProps {
   onQuizComplete?: (session: QuizSession) => void
 }
 
-const QuizInterface: React.FC<QuizInterfaceProps> = ({
-  theme,
-  userProfile,
-  onQuizComplete
-}) => {
+export default function QuizInterface({ theme, userProfile, onQuizComplete }: QuizInterfaceProps) {
   // State management
   const [quizSession, setQuizSession] = useState<QuizSession | null>(null)
   const [quizLoading, setQuizLoading] = useState(false)
-  const [selectedCertification, setSelectedCertification] = useState<string>('')
-  const [selectedTopicDetails, setSelectedTopicDetails] = useState<any>(null)
-  const [availableTopics, setAvailableTopics] = useState<any[]>([])
-  const [certificationContent, setCertificationContent] = useState<any>(null)
+  const [selectedTopicDetails, setSelectedTopicDetails] = useState<TopicDetails | null>(null)
+  const [selectedCertification, setSelectedCertification] = useState('')
+  const [availableTopics, setAvailableTopics] = useState<TopicDetails[]>([])
+  const [certificationContent, setCertificationContent] = useState<CertificationContent | null>(null)
 
   // Load certification content when certification is selected
-  useEffect(() => {
-    if (selectedCertification) {
-      loadCertificationContent(selectedCertification)
-    }
-  }, [selectedCertification])
-
-  // Load certification content and topics
-  const loadCertificationContent = async (certificationId: string) => {
+  const loadCertificationContent = async (certId: string) => {
     try {
-      const result = await loadCertificationContentAPI(certificationId)
-      setCertificationContent(result.content)
-      setAvailableTopics(result.allTopics)
-      console.log(`✅ Loaded ${result.allTopics.length} topics for ${certificationId}`)
-    } catch (error) {
-      console.error('❌ Failed to load certification content:', error)
-    }
-  }
-
-  // Generate quiz for selected topic
-  const generateTopicQuiz = async (certification: string, topicDetails: any) => {
-    setQuizLoading(true)
-    try {
-      const questions = await generateTopicQuizAPI(certification, topicDetails)
+      setQuizLoading(true)
+      const content = await loadCertificationContentAPI(certId)
+      setCertificationContent(content)
       
-      setQuizSession({
-        certification,
-        domain: `${topicDetails.moduleTitle} → ${topicDetails.title}`,
-        questions,
-        currentQuestion: 0,
-        answers: new Array(questions.length).fill(null),
-        score: 0,
-        completed: false
+      // Extract topics from modules
+      const allTopics: TopicDetails[] = []
+      content.modules.forEach(module => {
+        module.topics.forEach(topic => {
+          allTopics.push({
+            ...topic,
+            moduleTitle: module.title,
+            moduleId: module.moduleId,
+            estimatedTime: module.estimatedTime,
+            weight: module.weight
+          })
+        })
       })
-
-      console.log(`✅ Generated ${questions.length} questions for ${topicDetails.title}`)
+      setAvailableTopics(allTopics)
     } catch (error) {
-      console.error('❌ Topic quiz generation failed:', error)
+      console.error('Error loading certification content:', error)
+      setAvailableTopics([])
     } finally {
       setQuizLoading(false)
     }
   }
 
-  // Generate quiz for certification domain
-  const generateDomainQuiz = async (certification: string, domain: string) => {
+  // Generate quiz for specific domain
+  const generateQuiz = async (certification: string, domain: string) => {
+    if (!canGenerateQuiz()) {
+      return
+    }
+
     setQuizLoading(true)
     try {
       const response = await fetch('/api/generate-quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           certification,
           domain,
-          questionCount: 10,
+          questionCount: 5,
           userProfile: userProfile?.communicationStyle
-        }),
+        })
       })
 
-      if (!response.ok) throw new Error('Failed to generate quiz')
+      if (!response.ok) throw new Error('Quiz generation failed')
+
       const data = await response.json()
-      
-      setQuizSession({
+      const newSession: QuizSession = {
         certification,
         domain,
         questions: data.questions,
         currentQuestion: 0,
         answers: new Array(data.questions.length).fill(null),
         score: 0,
-        completed: false
-      })
+        completed: false,
+        timeStarted: new Date(),
+        metadata: data.metadata
+      }
+
+      setQuizSession(newSession)
+      recordQuiz()
     } catch (error) {
       console.error('Quiz generation error:', error)
     } finally {
@@ -102,13 +101,44 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
     }
   }
 
-  // Answer a question
+  // Generate quiz for specific topic
+  const generateTopicQuiz = async (certId: string, topicDetails: TopicDetails) => {
+    if (!canGenerateQuiz()) {
+      return
+    }
+
+    setQuizLoading(true)
+    try {
+      const response = await generateTopicQuizAPI(certId, topicDetails, userProfile?.communicationStyle)
+      
+      const newSession: QuizSession = {
+        certification: certId,
+        domain: topicDetails.title,
+        questions: response.questions,
+        currentQuestion: 0,
+        answers: new Array(response.questions.length).fill(null),
+        score: 0,
+        completed: false,
+        timeStarted: new Date(),
+        metadata: response.metadata
+      }
+
+      setQuizSession(newSession)
+      recordQuiz()
+    } catch (error) {
+      console.error('Topic quiz generation error:', error)
+    } finally {
+      setQuizLoading(false)
+    }
+  }
+
+  // Answer question
   const answerQuestion = (answerIndex: number) => {
-    if (!quizSession) return
+    if (!quizSession || quizSession.completed) return
 
     const newAnswers = [...quizSession.answers]
     newAnswers[quizSession.currentQuestion] = answerIndex
-    
+
     setQuizSession({
       ...quizSession,
       answers: newAnswers
@@ -117,7 +147,7 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
 
   // Move to next question or complete quiz
   const nextQuestion = () => {
-    if (!quizSession) return
+    if (!quizSession || quizSession.completed) return
 
     if (quizSession.currentQuestion < quizSession.questions.length - 1) {
       setQuizSession({
@@ -125,7 +155,7 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
         currentQuestion: quizSession.currentQuestion + 1
       })
     } else {
-      // Complete the quiz
+      // Complete quiz
       const correctAnswers = quizSession.answers.reduce((score, answer, index) => {
         return answer === quizSession.questions[index].correct ? score + 1 : score
       }, 0)
@@ -133,7 +163,8 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
       const completedSession = {
         ...quizSession,
         score: correctAnswers,
-        completed: true
+        completed: true,
+        timeCompleted: new Date()
       }
 
       setQuizSession(completedSession)
@@ -148,29 +179,10 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
     setSelectedTopicDetails(null)
   }
 
-  // Get theme-appropriate styling
-  const getThemeClasses = () => ({
-    container: theme === 'dark' ? 'bg-gray-800' : 'bg-white',
-    card: theme === 'dark' ? 'bg-gray-800' : 'bg-white',
-    text: {
-      primary: theme === 'dark' ? 'text-white' : 'text-gray-800',
-      secondary: theme === 'dark' ? 'text-gray-300' : 'text-gray-600',
-      muted: theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-    },
-    button: {
-      primary: 'bg-blue-500 hover:bg-blue-600 text-white',
-      secondary: theme === 'dark' 
-        ? 'bg-gray-700 hover:bg-gray-600 text-white' 
-        : 'bg-gray-200 hover:bg-gray-300 text-gray-800',
-      success: 'bg-green-500 hover:bg-green-600 text-white'
-    },
-    border: theme === 'dark' ? 'border-gray-600' : 'border-gray-200',
-    input: theme === 'dark' 
-      ? 'bg-gray-700 border-gray-600 text-white' 
-      : 'bg-white border-gray-300 text-gray-900'
-  })
-
-  const themeClasses = getThemeClasses()
+  // Get certification by provider for organization
+  const azureCerts = getCertificationsByProvider('Microsoft')
+  const awsCerts = getCertificationsByProvider('AWS')
+  const gcpCerts = getCertificationsByProvider('Google Cloud')
 
   // If quiz is completed, show results
   if (quizSession?.completed) {
@@ -183,24 +195,27 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
     )
   }
 
-  // If quiz is active, show quiz interface
+  // If quiz is active, show quiz interface (MAINTAINING EXACT ORIGINAL FORMAT)
   if (quizSession && !quizSession.completed) {
-    const currentQuestion = quizSession.questions[quizSession.currentQuestion]
-    const userAnswer = quizSession.answers[quizSession.currentQuestion]
-
     return (
-      <div className={`rounded-lg shadow-lg p-6 ${themeClasses.container}`}>
-        {/* Quiz Header */}
+      <div className={`rounded-lg shadow-lg p-6 ${
+        theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+      }`}>
+        {/* Quiz Header - EXACT ORIGINAL FORMAT */}
         <div className="flex justify-between items-center mb-6">
-          <h2 className={`text-xl font-bold ${themeClasses.text.primary}`}>
+          <h2 className={`text-xl font-bold ${
+            theme === 'dark' ? 'text-white' : 'text-gray-800'
+          }`}>
             {quizSession.certification} - {quizSession.domain}
           </h2>
-          <span className={`text-sm ${themeClasses.text.secondary}`}>
+          <span className={`text-sm ${
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+          }`}>
             Question {quizSession.currentQuestion + 1} of {quizSession.questions.length}
           </span>
         </div>
 
-        {/* Progress Bar */}
+        {/* Progress Bar - EXACT ORIGINAL FORMAT */}
         <div className="mb-6">
           <div className={`w-full bg-gray-200 rounded-full h-2 mb-4 ${
             theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
@@ -213,154 +228,107 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
             />
           </div>
 
-          {/* Question Content */}
+          {/* Question Content - EXACT ORIGINAL FORMAT */}
           <div className="space-y-4">
-            <h3 className={`text-lg font-medium leading-relaxed ${themeClasses.text.primary}`}>
-              {currentQuestion.question}
+            <h3 className={`text-lg font-medium leading-relaxed ${
+              theme === 'dark' ? 'text-white' : 'text-gray-800'
+            }`}>
+              {quizSession.questions[quizSession.currentQuestion]?.question}
             </h3>
 
-            {/* Answer Options */}
-            <div className="space-y-3">
-              {currentQuestion.options.map((option, index) => (
+            {/* Answer Options - EXACT ORIGINAL FORMAT */}
+            <div className="space-y-2">
+              {quizSession.questions[quizSession.currentQuestion]?.options.map((option, index) => (
                 <button
                   key={index}
                   onClick={() => answerQuestion(index)}
                   className={`w-full text-left p-4 border-2 rounded-lg transition-all ${
-                    userAnswer === index
-                      ? 'border-blue-500 bg-blue-50 text-blue-800'
-                      : `${themeClasses.border} ${themeClasses.text.primary} hover:border-blue-300 hover:bg-blue-50`
+                    quizSession.answers[quizSession.currentQuestion] === index
+                      ? (theme === 'dark' 
+                          ? 'border-blue-400 bg-blue-900/20' 
+                          : 'border-blue-500 bg-blue-50'
+                        )
+                      : (theme === 'dark' 
+                          ? 'border-gray-600 hover:border-gray-500' 
+                          : 'border-gray-200 hover:border-blue-300'
+                        )
                   }`}
                 >
-                  <span className="font-medium mr-3">
-                    {String.fromCharCode(65 + index)})
-                  </span>
+                  <span className="font-medium mr-3">{String.fromCharCode(65 + index)}.</span>
                   {option}
                 </button>
               ))}
             </div>
-
-            {/* Navigation */}
-            <div className="flex justify-between items-center pt-4">
-              <button
-                onClick={resetQuiz}
-                className={`px-4 py-2 rounded-lg transition-colors ${themeClasses.button.secondary}`}
-              >
-                ← Back to Topics
-              </button>
-              
-              <button
-                onClick={nextQuestion}
-                disabled={userAnswer === null}
-                className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                  userAnswer !== null
-                    ? themeClasses.button.primary
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                {quizSession.currentQuestion === quizSession.questions.length - 1 
-                  ? 'Complete Quiz' 
-                  : 'Next Question'
-                }
-              </button>
-            </div>
           </div>
-        </div>
-      </div>
-    )
-  }
 
-  // Topic selection interface
-  if (selectedCertification && availableTopics.length > 0 && !selectedTopicDetails) {
-    return (
-      <div className="space-y-6">
-        <div className={`text-center p-8 rounded-lg ${themeClasses.container} shadow-lg`}>
-          <Target className="w-16 h-16 mx-auto mb-4 text-blue-500" />
-          <h2 className={`text-2xl font-bold mb-2 ${themeClasses.text.primary}`}>
-            Select a Study Topic
-          </h2>
-          <p className={themeClasses.text.secondary}>
-            Choose from {availableTopics.length} official Microsoft Learn topics for {selectedCertification}
-          </p>
-        </div>
-
-        {/* Topic Grid */}
-        <div className="grid gap-4">
-          {availableTopics.map((topic, index) => (
+          {/* Navigation - EXACT ORIGINAL FORMAT */}
+          <div className="flex justify-between mt-6">
             <button
-              key={index}
-              onClick={() => setSelectedTopicDetails(topic)}
-              className={`p-4 rounded-lg border-2 text-left transition-all ${
-                theme === 'dark'
-                  ? 'border-gray-600 hover:border-blue-400 bg-gray-800/50 hover:bg-gray-700/50'
-                  : 'border-gray-200 hover:border-blue-300 bg-white hover:bg-blue-50'
+              onClick={resetQuiz}
+              className={`px-6 py-2 rounded-lg transition-colors ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
               }`}
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h5 className={`font-medium mb-2 ${themeClasses.text.primary}`}>
-                    📖 {topic.title}
-                  </h5>
-                  <p className={`text-sm mb-3 ${themeClasses.text.secondary}`}>
-                    Module: {topic.moduleTitle}
-                  </p>
-                  
-                  {topic.keyPoints && topic.keyPoints.length > 0 && (
-                    <div className="space-y-1">
-                      <p className={`text-xs font-medium ${themeClasses.text.muted}`}>
-                        Key concepts:
-                      </p>
-                      <ul className={`text-xs space-y-1 ${themeClasses.text.muted}`}>
-                        {topic.keyPoints.slice(0, 2).map((point: string, idx: number) => (
-                          <li key={idx} className="flex items-start">
-                            <span className="mr-1">•</span>
-                            <span>{point}</span>
-                          </li>
-                        ))}
-                        {topic.keyPoints.length > 2 && (
-                          <li className="italic">+{topic.keyPoints.length - 2} more...</li>
-                        )}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-                <ChevronRight className={`w-5 h-5 mt-1 ${themeClasses.text.muted}`} />
-              </div>
+              ← Back to Topics
             </button>
-          ))}
+            
+            <button
+              onClick={nextQuestion}
+              disabled={quizSession.answers[quizSession.currentQuestion] === null}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                quizSession.answers[quizSession.currentQuestion] !== null
+                  ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              {quizSession.currentQuestion === quizSession.questions.length - 1 
+                ? 'Complete Quiz' 
+                : 'Next Question'
+              }
+            </button>
+          </div>
         </div>
       </div>
     )
   }
 
-  // Topic details and quiz generation
+  // Show topic details and quiz generation button
   if (selectedTopicDetails) {
     return (
-      <div className={`p-6 rounded-lg shadow-lg ${themeClasses.container}`}>
+      <div className={`rounded-lg shadow-lg p-6 ${
+        theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+      }`}>
         <div className="text-center">
-          <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium mb-4 ${
-            theme === 'dark' 
-              ? 'bg-blue-900/30 text-blue-300' 
-              : 'bg-blue-100 text-blue-700'
-          }`}>
-            {selectedTopicDetails.moduleTitle}
-          </div>
+          <Target className={`mx-auto h-16 w-16 mb-4 ${
+            theme === 'dark' ? 'text-blue-400' : 'text-blue-500'
+          }`} />
           
-          <h3 className={`text-xl font-bold mb-2 ${themeClasses.text.primary}`}>
+          <h3 className={`text-xl font-bold mb-2 ${
+            theme === 'dark' ? 'text-white' : 'text-gray-800'
+          }`}>
             {selectedTopicDetails.title}
           </h3>
           
-          <p className={`mb-6 ${themeClasses.text.secondary}`}>
-            Ready to test your knowledge on this topic?
+          <p className={`text-sm mb-4 ${
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+          }`}>
+            Module: {selectedTopicDetails.moduleTitle} • {selectedTopicDetails.estimatedTime} • Weight: {selectedTopicDetails.weight}
           </p>
 
           {selectedTopicDetails.keyPoints && selectedTopicDetails.keyPoints.length > 0 && (
             <div className={`mb-6 p-4 rounded-lg ${
               theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'
             }`}>
-              <p className={`text-sm font-medium mb-2 ${themeClasses.text.secondary}`}>
+              <p className={`text-sm font-medium mb-2 ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+              }`}>
                 This quiz will cover:
               </p>
-              <ul className={`text-sm space-y-1 ${themeClasses.text.muted}`}>
+              <ul className={`text-sm space-y-1 ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+              }`}>
                 {selectedTopicDetails.keyPoints.map((point: string, index: number) => (
                   <li key={index} className="flex items-start">
                     <span className="mr-2">✓</span>
@@ -374,7 +342,11 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
           <div className="flex justify-center space-x-4">
             <button
               onClick={() => setSelectedTopicDetails(null)}
-              className={`px-6 py-2 rounded-lg transition-colors ${themeClasses.button.secondary}`}
+              className={`px-6 py-2 rounded-lg transition-colors ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+              }`}
             >
               ← Back to Topics
             </button>
@@ -382,17 +354,17 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
             <button
               onClick={() => generateTopicQuiz(selectedCertification, selectedTopicDetails)}
               disabled={quizLoading}
-              className={`px-8 py-2 rounded-lg font-medium transition-colors flex items-center ${themeClasses.button.success}`}
+              className="px-8 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors flex items-center"
             >
               {quizLoading ? (
                 <>
-                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Generating...
                 </>
               ) : (
                 <>
-                  <Target className="w-4 h-4 mr-2" />
-                  Generate 10 Questions
+                  <Brain className="h-4 w-4 mr-2" />
+                  Start Topic Quiz
                 </>
               )}
             </button>
@@ -402,59 +374,225 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
     )
   }
 
-  // Initial certification selection
+  // Show topic selection for selected certification
+  if (selectedCertification && availableTopics.length > 0) {
+    return (
+      <div className={`rounded-lg shadow-lg p-6 ${
+        theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+      }`}>
+        <div className="text-center mb-6">
+          <BookOpen className={`mx-auto h-16 w-16 mb-4 ${
+            theme === 'dark' ? 'text-blue-400' : 'text-blue-500'
+          }`} />
+          
+          <h3 className={`text-xl font-bold mb-2 ${
+            theme === 'dark' ? 'text-white' : 'text-gray-800'
+          }`}>
+            Select a Topic for {selectedCertification}
+          </h3>
+          
+          <p className={`text-sm ${
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+          }`}>
+            Choose from {availableTopics.length} available topics
+          </p>
+        </div>
+
+        <div className="grid gap-3 max-h-96 overflow-y-auto">
+          {availableTopics.map((topic, index) => (
+            <button
+              key={index}
+              onClick={() => setSelectedTopicDetails(topic)}
+              className={`text-left p-4 rounded-lg border-2 transition-all hover:border-blue-500 ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                  : 'bg-white border-gray-200 text-gray-800 hover:bg-blue-50'
+              }`}
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h4 className="font-medium text-sm">{topic.title}</h4>
+                  <p className={`text-xs mt-1 ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
+                    {topic.moduleTitle}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2 text-xs">
+                  <Clock className="h-3 w-3" />
+                  <span>{topic.estimatedTime}</span>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={() => {
+              setSelectedCertification('')
+              setAvailableTopics([])
+            }}
+            className={`px-6 py-2 rounded-lg transition-colors ${
+              theme === 'dark' 
+                ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+            }`}
+          >
+            ← Back to Certifications
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Show certification selection
   return (
-    <div className="space-y-6">
-      <div className={`text-center p-8 rounded-lg ${themeClasses.container} shadow-lg`}>
-        <Target className="w-16 h-16 mx-auto mb-4 text-blue-500" />
-        <h2 className={`text-2xl font-bold mb-2 ${themeClasses.text.primary}`}>
-          Practice Quiz
+    <div className={`rounded-lg shadow-lg p-6 ${
+      theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+    }`}>
+      <div className="text-center mb-8">
+        <Brain className={`mx-auto h-16 w-16 mb-4 ${
+          theme === 'dark' ? 'text-blue-400' : 'text-blue-500'
+        }`} />
+        
+        <h2 className={`text-2xl font-bold mb-2 ${
+          theme === 'dark' ? 'text-white' : 'text-gray-800'
+        }`}>
+          Practice Quiz Generator
         </h2>
-        <p className={themeClasses.text.secondary}>
-          Select a certification to start practicing with official curriculum topics
+        
+        <p className={`${
+          theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+        }`}>
+          Test your knowledge with AI-generated practice questions
         </p>
       </div>
 
       {/* Certification Selection */}
-      <div className={`p-6 rounded-lg shadow-lg ${themeClasses.container}`}>
-        <h3 className={`text-lg font-medium mb-4 ${themeClasses.text.primary}`}>
-          Choose Your Certification
-        </h3>
-        
-        <div className="grid gap-4">
-          {Object.values(MULTI_CLOUD_CERTIFICATIONS_2025).slice(0, 6).map((cert) => {
-            const colors = getColorClasses(cert.color, theme)
-            
-            return (
+      <div className="space-y-6">
+        {/* Microsoft Azure */}
+        <div>
+          <h3 className={`text-lg font-semibold mb-3 flex items-center ${
+            theme === 'dark' ? 'text-white' : 'text-gray-800'
+          }`}>
+            <Award className="h-5 w-5 mr-2 text-blue-500" />
+            Microsoft Azure
+          </h3>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {azureCerts.map(cert => (
               <button
                 key={cert.id}
-                onClick={() => setSelectedCertification(cert.id)}
-                className={`p-4 rounded-lg border-2 text-left transition-all ${colors.bg} ${colors.border} hover:shadow-md`}
+                onClick={() => {
+                  setSelectedCertification(cert.id)
+                  loadCertificationContent(cert.id)
+                }}
+                disabled={quizLoading}
+                className={`text-left p-4 rounded-lg border-2 transition-all hover:border-blue-500 ${
+                  theme === 'dark' 
+                    ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                    : 'bg-white border-gray-200 text-gray-800 hover:bg-blue-50'
+                } ${quizLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <div className="flex items-center">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold mr-4 ${colors.icon}`}>
-                    {getProviderIcon(cert.provider)}
-                  </div>
-                  <div className="flex-1">
-                    <div className={`font-bold ${colors.text}`}>
-                      {cert.name}
-                    </div>
-                    <div className={`text-sm ${themeClasses.text.secondary}`}>
-                      {cert.fullName}
-                    </div>
-                    <div className={`text-xs ${themeClasses.text.muted}`}>
-                      {cert.provider} • {cert.level} Level
-                    </div>
-                  </div>
-                  <ChevronRight className={`w-5 h-5 ${themeClasses.text.muted}`} />
+                <div className="flex justify-between items-start mb-2">
+                  <span className="font-semibold text-blue-500">{cert.name}</span>
+                  <ChevronRight className="h-4 w-4" />
                 </div>
+                <p className={`text-sm ${
+                  theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  {cert.fullName}
+                </p>
               </button>
-            )
-          })}
+            ))}
+          </div>
+        </div>
+
+        {/* AWS */}
+        <div>
+          <h3 className={`text-lg font-semibold mb-3 flex items-center ${
+            theme === 'dark' ? 'text-white' : 'text-gray-800'
+          }`}>
+            <Award className="h-5 w-5 mr-2 text-orange-500" />
+            Amazon Web Services
+          </h3>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {awsCerts.map(cert => (
+              <button
+                key={cert.id}
+                onClick={() => {
+                  setSelectedCertification(cert.id)
+                  loadCertificationContent(cert.id)
+                }}
+                disabled={quizLoading}
+                className={`text-left p-4 rounded-lg border-2 transition-all hover:border-orange-500 ${
+                  theme === 'dark' 
+                    ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                    : 'bg-white border-gray-200 text-gray-800 hover:bg-orange-50'
+                } ${quizLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <span className="font-semibold text-orange-500">{cert.name}</span>
+                  <ChevronRight className="h-4 w-4" />
+                </div>
+                <p className={`text-sm ${
+                  theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  {cert.fullName}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Google Cloud */}
+        <div>
+          <h3 className={`text-lg font-semibold mb-3 flex items-center ${
+            theme === 'dark' ? 'text-white' : 'text-gray-800'
+          }`}>
+            <Award className="h-5 w-5 mr-2 text-red-500" />
+            Google Cloud Platform
+          </h3>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {gcpCerts.map(cert => (
+              <button
+                key={cert.id}
+                onClick={() => {
+                  setSelectedCertification(cert.id)
+                  loadCertificationContent(cert.id)
+                }}
+                disabled={quizLoading}
+                className={`text-left p-4 rounded-lg border-2 transition-all hover:border-red-500 ${
+                  theme === 'dark' 
+                    ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                    : 'bg-white border-gray-200 text-gray-800 hover:bg-red-50'
+                } ${quizLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <span className="font-semibold text-red-500">{cert.name}</span>
+                  <ChevronRight className="h-4 w-4" />
+                </div>
+                <p className={`text-sm ${
+                  theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  {cert.fullName}
+                </p>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+
+      {quizLoading && (
+        <div className="text-center mt-6">
+          <div className="inline-flex items-center">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+            <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>
+              Loading certification content...
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-
-export default QuizInterface
