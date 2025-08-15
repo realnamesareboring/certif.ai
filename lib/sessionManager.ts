@@ -162,6 +162,51 @@ class SessionManager {
   }
 }
 
+// Add to end of lib/sessionManager.ts (before the exports)
+
+/**
+ * Load user profile from localStorage with validation
+ * Moved from session-utils.ts
+ */
+export const loadUserProfile = (): any => {
+  if (typeof window === 'undefined') return null
+  
+  try {
+    const savedProfile = localStorage.getItem('userProfile')
+    return savedProfile ? JSON.parse(savedProfile) : null
+  } catch (error) {
+    console.error('Error loading user profile:', error)
+    return null
+  }
+}
+
+/**
+ * Save user profile to localStorage
+ * Moved from session-utils.ts
+ */
+export const saveUserProfile = (profile: any): void => {
+  if (typeof window === 'undefined') return
+  
+  try {
+    localStorage.setItem('userProfile', JSON.stringify(profile))
+    console.log('✅ User profile saved')
+  } catch (error) {
+    console.error('Error saving user profile:', error)
+  }
+}
+
+/**
+ * Reset user profile and clear session data
+ * Moved from session-utils.ts
+ */
+export const resetUserProfile = (): void => {
+  if (typeof window === 'undefined') return
+  
+  localStorage.removeItem('userProfile')
+  localStorage.removeItem('currentSession')
+  console.log('🔄 User profile and session cleared')
+}
+
 // Export simple functions
 export const sessionManager = SessionManager.getInstance()
 export const startNewSession = () => sessionManager.startSession()
@@ -170,3 +215,4 @@ export const recordMessage = () => sessionManager.recordMessage()
 export const canGenerateQuiz = () => sessionManager.canGenerateQuiz()
 export const recordQuiz = () => sessionManager.recordQuiz()
 export const getDailyUsage = () => sessionManager.getDailyUsage()
+

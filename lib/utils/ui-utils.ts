@@ -93,9 +93,131 @@ export const initializeTheme = (setTheme: (theme: 'light' | 'dark') => void): 'l
   return savedTheme
 }
 
+
+/**
+ * Get certification color for UI theming
+ * Moved from certification-utils.ts
+ */
+export const getCertificationColor = (certId: string) => {
+  const colors: Record<string, string> = {
+    'AZ-900': 'blue',
+    'SC-200': 'red', 
+    'AWS-SAA': 'orange',
+    'GCP-CDL': 'green'
+  }
+  return colors[certId] || 'blue'
+}
+
+/**
+ * Get popular certifications for onboarding selection
+ * Moved from certification-utils.ts
+ */
+export const getPopularCertifications = () => {
+  return [
+    {
+      id: 'SC-900',
+      name: 'SC-900',
+      fullName: 'Security, Compliance, and Identity Fundamentals',
+      level: 'Fundamentals',
+      provider: 'Microsoft',
+      color: 'bg-red-500',
+      description: 'Security fundamentals and Microsoft security services',
+      averageSalary: '$65,000 - $85,000',
+      icon: 'M'
+    },
+    {
+      id: 'AZ-900',
+      name: 'AZ-900', 
+      fullName: 'Azure Fundamentals',
+      level: 'Fundamentals',
+      provider: 'Microsoft',
+      color: 'bg-blue-500',
+      description: 'Cloud concepts and core Azure services',
+      averageSalary: '$60,000 - $80,000',
+      icon: 'M'
+    },
+    {
+      id: 'AZ-104',
+      name: 'AZ-104',
+      fullName: 'Azure Administrator Associate', 
+      level: 'Associate',
+      provider: 'Microsoft',
+      color: 'bg-blue-600',
+      description: 'Azure administration and infrastructure management',
+      averageSalary: '$90,000 - $120,000',
+      icon: 'M'
+    },
+    {
+      id: 'CLF-C02',
+      name: 'AWS CLF-C02',
+      fullName: 'AWS Cloud Practitioner',
+      level: 'Foundational', 
+      provider: 'AWS',
+      color: 'bg-orange-500',
+      description: 'AWS cloud concepts and services fundamentals',
+      averageSalary: '$65,000 - $85,000',
+      icon: 'A'
+    }
+  ]
+}
+
+/**
+ * Get certification domains - simplified version for backwards compatibility
+ * This replaces the complex function from certification-utils.ts
+ */
+export const getCertificationDomains = (certificationId: string) => {
+  // For now, return a simple structure that matches what page.tsx expects
+  // You can expand this later or remove if not needed
+  const domains = {
+    'AZ-900': {
+      id: 'AZ-900',
+      name: 'AZ-900',
+      fullName: 'Azure Fundamentals',
+      color: 'blue',
+      domains: [
+        {
+          name: "Cloud Concepts",
+          weight: "25-30%",
+          description: "Cloud computing concepts and Azure overview"
+        },
+        {
+          name: "Core Azure Services", 
+          weight: "25-30%",
+          description: "Azure architecture, compute, networking, storage, databases"
+        },
+        {
+          name: "Security and Compliance",
+          weight: "25-30%", 
+          description: "Azure security features, governance, privacy, compliance"
+        },
+        {
+          name: "Azure Pricing and Support",
+          weight: "20-25%",
+          description: "Subscriptions, pricing, support options, SLAs"
+        }
+      ]
+    }
+    // Add other certifications as needed
+  }
+  
+  return domains[certificationId] || {
+    id: certificationId,
+    name: certificationId,
+    fullName: `${certificationId} Certification`,
+    color: 'blue',
+    domains: [
+      {
+        name: "General Knowledge",
+        weight: "100%",
+        description: "Core certification topics"
+      }
+    ]
+  }
+}
+
 /**
  * Format message content with proper line breaks
- * Extracted from page.tsx formatMessage function - ~15 lines saved (if used)
+ * Used by ChatInterface component
  */
 export const formatMessageContent = (content: string) => {
   const lines = content.split(/\n|\r\n|\r/)
@@ -125,26 +247,3 @@ export const formatMessageContent = (content: string) => {
   })
 }
 
-/**
- * Get theme-appropriate CSS classes for common UI elements
- * New utility to reduce theme class duplication
- */
-export const getThemeClasses = (theme: 'light' | 'dark') => ({
-  // Background classes
-  cardBg: theme === 'dark' ? 'bg-gray-800' : 'bg-white',
-  sectionBg: theme === 'dark' ? 'bg-gray-900' : 'bg-gradient-to-br from-blue-50 to-indigo-100',
-  inputBg: theme === 'dark' ? 'bg-gray-700' : 'bg-white',
-  
-  // Text classes
-  primaryText: theme === 'dark' ? 'text-white' : 'text-gray-800',
-  secondaryText: theme === 'dark' ? 'text-gray-300' : 'text-gray-600',
-  mutedText: theme === 'dark' ? 'text-gray-400' : 'text-gray-500',
-  
-  // Border classes
-  border: theme === 'dark' ? 'border-gray-600' : 'border-gray-200',
-  divider: theme === 'dark' ? 'border-gray-600' : 'border-gray-200',
-  
-  // Button classes
-  button: theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-50',
-  buttonText: theme === 'dark' ? 'text-gray-300 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
-})

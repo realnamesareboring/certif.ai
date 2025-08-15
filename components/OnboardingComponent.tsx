@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { ChevronRight, User, Target, Brain, Award, Sun, Moon } from 'lucide-react'
 import { MULTI_CLOUD_CERTIFICATIONS_2025 } from '../lib/certifications'
 import type { UserProfile, Theme } from '../types'
-import { getColorClasses, getProviderIcon } from '../lib/utils/ui-utils'
+import { getColorClasses, getProviderIcon, getPopularCertifications } from '../lib/utils/ui-utils'
 import { getCertificationWelcomeMessage } from '../lib/utils/message-utils'
 import { loadCertificationContentAPI } from '../lib/utils/api-utils'
 

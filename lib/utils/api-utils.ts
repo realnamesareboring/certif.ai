@@ -2,7 +2,7 @@
 // API utility functions extracted from page.tsx
 // Phase 1 consolidation - targeting ~60 lines saved
 
-import { UserProfile } from './message-utils'
+import type { UserProfile } from '../../types'
 import type { QuizQuestion, ChatMessage } from '../../types'
 
 // Type alias for consistency with existing code
@@ -103,3 +103,5 @@ export const getAPIErrorMessage = (userProfile: UserProfile | null): string => {
     return 'Sorry, there was an issue processing your request. Please try again.'
   }
 }
+
+export const getErrorMessage = getAPIErrorMessage

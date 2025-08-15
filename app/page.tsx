@@ -22,18 +22,14 @@ import type {
 } from '../types'
 // Add to your existing imports  
 import { 
-  getPopularCertifications,
-  getCertificationDomains,
-  getCertificationColor
-} from '../lib/utils/certification-utils'  // Note: certification-utils, not certifications
-// Add to your existing imports
-import { 
   getColorClasses,
   getProviderIcon,
   getFilteredCertifications,
   toggleTheme,
-  initializeTheme,
-  getThemeClasses
+  initializeTheme,  // ← Add this
+  getPopularCertifications,
+  getCertificationDomains,
+  getCertificationColor
 } from '../lib/utils/ui-utils'
 // Add these to your existing imports
 import { 
@@ -43,12 +39,11 @@ import {
   getAPIErrorMessage
 } from '../lib/utils/api-utils'
 import {
-  initializeNewSession,
-  testSessionLimits,
-  resetUserProfile,
   loadUserProfile,
-  saveUserProfile
-} from '../lib/utils/session-utils'
+  saveUserProfile,
+  resetUserProfile,
+  startNewSession as initializeNewSession  // ✅ Alias for compatibility
+} from '../lib/sessionManager'
 import OnboardingComponent from '../components/OnboardingComponent'
 import ChatInterface from '../components/ChatInterface'
 import QuizInterface from '../components/QuizInterface'
