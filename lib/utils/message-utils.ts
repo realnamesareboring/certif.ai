@@ -95,36 +95,36 @@ export const getCompletionMessage = (profile: UserProfile): string => {
  * Generate standardized error messages based on communication style
  * Extracted from page.tsx error patterns - ~5 lines saved
  */
-export const getErrorMessage = (profile?: UserProfile, context: 'chat' | 'quiz' | 'general' = 'general'): string => {
-  const isCasual = profile?.communicationStyle?.tone === 'casual';
-  const isFormal = profile?.communicationStyle?.tone === 'formal';
+// export const getErrorMessage = (profile?: UserProfile, context: 'chat' | 'quiz' | 'general' = 'general'): string => {
+//   const isCasual = profile?.communicationStyle?.tone === 'casual';
+//   const isFormal = profile?.communicationStyle?.tone === 'formal';
   
-  if (context === 'chat') {
-    if (isCasual) {
-      return 'Oops! Something went wrong. Try again?';
-    } else if (isFormal) {
-      return 'I apologize, but I encountered an error. Please try again.';
-    } else {
-      return 'Sorry, something went wrong. Please try again.';
-    }
-  } else if (context === 'quiz') {
-    if (isCasual) {
-      return "Uh oh! Quiz didn't load. Want me to try again?";
-    } else if (isFormal) {
-      return 'Quiz generation failed. Would you like to retry?';
-    } else {
-      return 'Failed to generate quiz. Please try again.';
-    }
-  } else {
-    if (isCasual) {
-      return "Something's not working right. Give it another shot?";
-    } else if (isFormal) {
-      return 'An error occurred. Please retry your request.';
-    } else {
-      return 'An error occurred. Please try again.';
-    }
-  }
-};
+//   if (context === 'chat') {
+//     if (isCasual) {
+//       return 'Oops! Something went wrong. Try again?';
+//     } else if (isFormal) {
+//       return 'I apologize, but I encountered an error. Please try again.';
+//     } else {
+//       return 'Sorry, something went wrong. Please try again.';
+//     }
+//   } else if (context === 'quiz') {
+//     if (isCasual) {
+//       return "Uh oh! Quiz didn't load. Want me to try again?";
+//     } else if (isFormal) {
+//       return 'Quiz generation failed. Would you like to retry?';
+//     } else {
+//       return 'Failed to generate quiz. Please try again.';
+//     }
+//   } else {
+//     if (isCasual) {
+//       return "Something's not working right. Give it another shot?";
+//     } else if (isFormal) {
+//       return 'An error occurred. Please retry your request.';
+//     } else {
+//       return 'An error occurred. Please try again.';
+//     }
+//   }
+// };
 
 /**
  * Generate fallback message when certification content fails to load

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import type { ChatMessage, UserProfile, Theme } from '../types'
 import { sendMessageToAPI, getAPIErrorMessage } from '../lib/utils/api-utils'
-import { getErrorMessage } from '../lib/utils/message-utils'
+// import { getAPErrorMessage } from '../lib/utils/message-utils'
 import { formatMessageContent } from '../lib/utils/ui-utils'
 
 interface ChatInterfaceProps {
@@ -28,10 +28,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   // Refs for auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
   }, [messages])
 
   // Auto-focus input when component mounts
@@ -145,7 +151,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   return (
     <div className={`rounded-lg shadow-lg overflow-hidden ${themeClasses.container}`}>
       {/* Messages Area */}
-      <div className="h-96 overflow-y-auto p-6 space-y-4">
+      <div 
+        ref={messagesContainerRef}
+        className="h-96 overflow-y-auto p-6 space-y-4"
+      >
         {messages.map((message, index) => (
           <div
             key={index}

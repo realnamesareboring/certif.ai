@@ -9,7 +9,7 @@ import { calculateQuizMetrics } from '../lib/utils/quiz-utils'
 import { 
   getWelcomeBackMessage,
   getCertificationWelcomeMessage, 
-  getErrorMessage,
+  // getErrorMessage,
   getInitialChatMessage,
   getCompletionMessage
 } from '../lib/utils/message-utils'
@@ -110,30 +110,7 @@ useEffect(() => {
   }
   
   checkSession()
-  
-//   // Add one debug function to window for testing
-//   if (typeof window !== 'undefined') {
-//     window.debugQuiz = async () => {
-//       console.log('🧪 Testing quiz API...')
-//       try {
-//         const response = await fetch('/api/generate-quiz', {
-//           method: 'POST',
-//           headers: { 'Content-Type': 'application/json' },
-//           body: JSON.stringify({
-//             certification: 'AZ-900',
-//             domain: 'Cloud Concepts',
-//             questionCount: 3
-//           })
-//         })
-//         console.log('Status:', response.status)
-//         const data = await response.json()
-//         console.log('Response:', data)
-//       } catch (error) {
-//         console.error('Error:', error)
-//       }
-//     }
-//   }
-  
+    
   const interval = setInterval(checkSession, 60000)
   return () => clearInterval(interval)
 }, [])
@@ -234,59 +211,59 @@ const loadCertificationContent = async (certificationId: string) => {
 // ADD this new function:
 // REPLACE your getCertificationWelcomeMessage function with this:
 
-const getCertificationWelcomeMessage = (profile, officialContent) => {
-  const certName = profile.targetCertification
-  const style = profile.communicationStyle
+// const getCertificationWelcomeMessage = (profile, officialContent) => {
+//   const certName = profile.targetCertification
+//   const style = profile.communicationStyle
   
-  // Get the CORRECT topics from official Microsoft Learn content
-  const getOfficialTopics = () => {
-    if (!officialContent?.domains) {
-      return ["• General certification topics", "• Practice questions", "• Study guidance"]
-    }
+//   // Get the CORRECT topics from official Microsoft Learn content
+//   const getOfficialTopics = () => {
+//     if (!officialContent?.domains) {
+//       return ["• General certification topics", "• Practice questions", "• Study guidance"]
+//     }
     
-    return officialContent.domains.slice(0, 3).map(domain => 
-      `• ${domain.name} (${domain.weight})`
-    )
-  }
+//     return officialContent.domains.slice(0, 3).map(domain => 
+//       `• ${domain.name} (${domain.weight})`
+//     )
+//   }
 
-  const topics = getOfficialTopics()
+//   const topics = getOfficialTopics()
   
-  if (style?.tone === 'casual') {
-    return `Yo! Welcome to your ${certName} study squad! 🚀
+//   if (style?.tone === 'casual') {
+//     return `Yo! Welcome to your ${certName} study squad! 🚀
 
-I've loaded all the official Microsoft Learn content for ${certName}, so we're gonna crush this exam together!
+// I've loaded all the official Microsoft Learn content for ${certName}, so we're gonna crush this exam together!
 
-I'm ur dedicated ${certName} tutor now - ask me anything about:
-${topics.join('\n')}
+// I'm ur dedicated ${certName} tutor now - ask me anything about:
+// ${topics.join('\n')}
 
-Ready to get started? What part of ${certName} do u wanna dive into first?`
-  } else if (style?.tone === 'formal') {
-    return `Welcome to your dedicated ${certName} preparation program.
+// Ready to get started? What part of ${certName} do u wanna dive into first?`
+//   } else if (style?.tone === 'formal') {
+//     return `Welcome to your dedicated ${certName} preparation program.
 
-I have successfully integrated the complete Microsoft Learn curriculum for ${certName}, including:
+// I have successfully integrated the complete Microsoft Learn curriculum for ${certName}, including:
 
-• Official exam objectives and domains
-• Key terminology and concepts  
-• Practice scenarios and examples
-• Study guidance and tips
+// • Official exam objectives and domains
+// • Key terminology and concepts  
+// • Practice scenarios and examples
+// • Study guidance and tips
 
-Your ${certName} exam covers these main areas:
-${topics.join('\n')}
+// Your ${certName} exam covers these main areas:
+// ${topics.join('\n')}
 
-I will serve as your specialized ${certName} instructor, adapting all explanations to your preferred learning style.
+// I will serve as your specialized ${certName} instructor, adapting all explanations to your preferred learning style.
 
-How would you like to begin your ${certName} preparation?`
-  } else {
-    return `Welcome to your personalized ${certName} study experience!
+// How would you like to begin your ${certName} preparation?`
+//   } else {
+//     return `Welcome to your personalized ${certName} study experience!
 
-I've loaded the complete Microsoft Learn content for ${certName} and I'm ready to be your dedicated tutor. Every explanation will be tailored to your communication style.
+// I've loaded the complete Microsoft Learn content for ${certName} and I'm ready to be your dedicated tutor. Every explanation will be tailored to your communication style.
 
-The ${certName} exam focuses on:
-${topics.join('\n')}
+// The ${certName} exam focuses on:
+// ${topics.join('\n')}
 
-Let's start mastering ${certName}! What topic would you like to explore first?`
-  }
-}
+// Let's start mastering ${certName}! What topic would you like to explore first?`
+//   }
+// }
 
 // ==========================================
 // 🛡️ APPEND THIS TO THE BOTTOM OF YOUR page.tsx
