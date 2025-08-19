@@ -48,8 +48,6 @@ import OnboardingComponent from '../components/OnboardingComponent'
 import ChatInterface from '../components/ChatInterface'
 import QuizInterface from '../components/QuizInterface'
 
-
-
 export default function EnhancedPersonalizedCoach() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
@@ -76,12 +74,71 @@ export default function EnhancedPersonalizedCoach() {
   const [certificationContent, setCertificationContent] = useState(null)
 
 // 🎯 SIMPLE: Just replace your useEffect on line 243 with this
+// Use effect for time management
+// useEffect(() => {
+//   const checkSession = () => {
+//     let session = localStorage.getItem('currentSession')
+    
+//     // Create session if none exists
+//     if (!session) {
+//       const newSession = {
+//         sessionId: `session_${Date.now()}`,
+//         startTime: Date.now(),
+//         lastActivity: Date.now(),
+//         messageCount: 0,
+//         quizCount: 0
+//       }
+//       localStorage.setItem('currentSession', JSON.stringify(newSession))
+//       session = JSON.stringify(newSession)
+//       console.log('🟢 New session created')
+//     }
+    
+//     // Update UI with session timing
+//     try {
+//       const { startTime } = JSON.parse(session)
+//       const elapsed = Date.now() - startTime
+//       const remaining = (45 * 60 * 1000) - elapsed // 45 minutes
+//       setTimeLeft(Math.max(0, remaining))
+//       setSessionStatus('🟢 Active')
+//     } catch (error) {
+//       console.error('Session error:', error)
+//       setSessionStatus('🔴 Error')
+//       setTimeLeft(0)
+//     }
+//   }
+  
+//   checkSession()
+    
+//   const interval = setInterval(checkSession, 60000)
+//   return () => clearInterval(interval)
+// }, [])
+
+
+  // Load user profile and theme on component mount
+// useEffect(() => {
+//   const savedProfile = loadUserProfile()  // from session-utils
+//   const savedTheme = initializeTheme(setTheme)  // from ui-utils (already imported)
+  
+//   if (savedProfile) {
+//     setUserProfile(savedProfile)
+//     if (savedProfile.isOnboarded) {
+//       setMessages([{
+//         role: 'assistant',
+//         content: getWelcomeBackMessage(savedProfile)
+//       }])
+//     }
+//   } else {
+//     setIsOnboarding(true)
+//   }
+// }, [])
+
 
 useEffect(() => {
+  console.log('🚀 Initializing app...')
+  
   const checkSession = () => {
     let session = localStorage.getItem('currentSession')
     
-    // Create session if none exists
     if (!session) {
       const newSession = {
         sessionId: `session_${Date.now()}`,
@@ -95,11 +152,10 @@ useEffect(() => {
       console.log('🟢 New session created')
     }
     
-    // Update UI with session timing
     try {
       const { startTime } = JSON.parse(session)
       const elapsed = Date.now() - startTime
-      const remaining = (45 * 60 * 1000) - elapsed // 45 minutes
+      const remaining = (45 * 60 * 1000) - elapsed
       setTimeLeft(Math.max(0, remaining))
       setSessionStatus('🟢 Active')
     } catch (error) {
@@ -108,18 +164,13 @@ useEffect(() => {
       setTimeLeft(0)
     }
   }
+
+  // Profile & theme loading (replace loadUserProfile with your actual function)
+  const savedProfile = loadUserProfile()
+  const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' || 'light'
   
-  checkSession()
-    
-  const interval = setInterval(checkSession, 60000)
-  return () => clearInterval(interval)
-}, [])
-
-
-  // Load user profile and theme on component mount
-useEffect(() => {
-  const savedProfile = loadUserProfile()  // from session-utils
-  const savedTheme = initializeTheme(setTheme)  // from ui-utils (already imported)
+  setTheme(savedTheme)
+  document.documentElement.classList.toggle('dark', savedTheme === 'dark')
   
   if (savedProfile) {
     setUserProfile(savedProfile)
@@ -132,8 +183,26 @@ useEffect(() => {
   } else {
     setIsOnboarding(true)
   }
+
+  checkSession()
+  const interval = setInterval(checkSession, 60000)
+  
+  return () => clearInterval(interval)
 }, [])
 
+useEffect(() => {
+  if (selectedTopicDetails) {
+    console.log('🎯 Preventing quiz domain scroll jump')
+    const currentScrollY = window.scrollY
+    
+    requestAnimationFrame(() => {
+      window.scrollTo({
+        top: currentScrollY,
+        behavior: 'auto'
+      })
+    })
+  }
+}, [selectedTopicDetails])
 
 const loadCertificationContent = async (certificationId: string) => {
   try {
@@ -393,6 +462,15 @@ const generateTopicQuiz = async (certification: string, topicDetails: any) => {
     console.error('❌ Topic quiz generation failed:', error)
   } finally {
     setQuizLoading(false)
+  }
+}
+
+const handleRetakeQuiz = () => {
+  console.log('🔄 Simple retake...')
+  
+  if (selectedTopicDetails && selectedCertification) {
+    // Just call the normal generation function - no fancy logic
+    generateTopicQuiz(selectedCertification, selectedTopicDetails)
   }
 }
 
@@ -773,12 +851,24 @@ const testSessionLimits = () => {
               {module.topics.map(topic => (
                 <button
                   key={topic.id}
-                  onClick={() => setSelectedTopicDetails({
-                    ...topic,
-                    moduleTitle: module.title,
-                    moduleId: module.moduleId,
-                    estimatedTime: module.estimatedTime
-                  })}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    
+                    const currentScrollY = window.scrollY
+                    
+                    setSelectedTopicDetails({
+                      ...topic,
+                      moduleTitle: module.title,
+                      moduleId: module.moduleId,
+                      estimatedTime: module.estimatedTime || '',
+                      weight: module.weight || ''
+                    })
+                    
+                    requestAnimationFrame(() => {
+                      window.scrollTo({ top: currentScrollY, behavior: 'auto' })
+                    })
+                  }}
                   className={`p-4 border rounded-lg text-left transition-all hover:shadow-sm ${
                     theme === 'dark' 
                       ? 'border-gray-600 hover:border-blue-400 bg-gray-800/50 hover:bg-gray-700/50' 
@@ -920,7 +1010,7 @@ const testSessionLimits = () => {
 )}
 
                 {/* Quiz Session Display */}
-                {quizSession && !quizSession.completed && (
+                {quizSession && !quizSession.completed &&  !quizLoading &&(
                   <div className={`rounded-lg shadow-lg p-6 ${
                     theme === 'dark' ? 'bg-gray-800' : 'bg-white'
                   }`}>
@@ -1010,14 +1100,7 @@ const testSessionLimits = () => {
                   <QuizResults 
                     quizSession={quizSession}
                     onResetQuiz={resetQuiz}
-                    onRetakeQuiz={() => {
-                      // Optional: implement retake functionality
-                      if (selectedTopicDetails) {
-                        generateTopicQuiz(selectedCertification, selectedTopicDetails)
-                      } else {
-                        generateQuizProtected(quizSession.certification, quizSession.domain)
-                      }
-                    }}
+                    onRetakeQuiz={handleRetakeQuiz}
                     theme={theme}
                   />
                 )}
