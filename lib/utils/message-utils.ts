@@ -62,69 +62,62 @@ ${topics.join('\n')}
 
 I will serve as your specialized ${certName} instructor, adapting all explanations to your preferred learning style.
 
-How would you like to begin your ${certName} preparation?`;
+Practice Quiz Generation
+
+How would you like to proceed?`;
   } else {
-    return `Welcome to your personalized ${certName} study experience!
+    return `Perfect ${profile.name}!
 
-I've loaded the complete Microsoft Learn content for ${certName} and I'm ready to be your dedicated tutor. Every explanation will be tailored to your communication style.
+I've learned your style - you like ${style.complexity} explanations delivered through ${style.explanationStyle}. I'll keep things ${style.tone} but informative.
 
-The ${certName} exam focuses on:
-${topics.join('\n')}
+Ready to start? I can help with:
 
-Let's start mastering ${certName}! What topic would you like to explore first?`;
+→ AI coaching and explanations
+→ Custom practice quizzes
+
+What interests you most?`;
   }
 };
 
 /**
- * Generate completion message for onboarding flow
- * Extracted from page.tsx - ~15 lines saved
+ * Generate error message based on user communication style
+ * MOVED from api-utils.ts - Single source of truth for all error messages
  */
-export const getCompletionMessage = (profile: UserProfile): string => {
-  const style = profile.communicationStyle;
+export const getAPIErrorMessage = (
+  userProfile: UserProfile | null, 
+  context: 'chat' | 'quiz' | 'general' = 'general'
+): string => {
+  const tone = userProfile?.communicationStyle?.tone
   
-  if (style.tone === 'casual') {
-    return `Awesome ${profile.name}! 🎯\n\nI can tell you're pretty ${style.tone} and like ${style.complexity} explanations with lots of ${style.explanationStyle}.\n\nI'm gonna match your vibe from now on - no boring formal stuff! Ready to crush some cloud certs? I can help with:\n\n• AI coaching (ask me anything!)\n• Practice quizzes (I'll generate fresh questions)\n\nWhat sounds good?`;
-  } else if (style.tone === 'formal') {
-    return `Excellent, ${profile.name}.\n\nI have analyzed your communication style:\n\n• Tone: Professional and ${style.tone}\n• Complexity: ${style.complexity} explanations\n• Learning: ${style.explanationStyle}-based instruction\n• Format: ${style.learningPreference} presentation\n\nI will adapt all responses accordingly. Please select your preferred study method:\n\n1. AI Coaching Sessions\n2. Practice Quiz Generation\n\nHow would you like to proceed?`;
+  if (context === 'chat') {
+    if (tone === 'casual') {
+      return 'Oops! Something went wrong. Try again?'
+    } else if (tone === 'formal') {
+      return 'I apologize, but I encountered an error. Please try again.'
+    } else {
+      return 'Sorry, something went wrong. Please try again.'
+    }
+  } else if (context === 'quiz') {
+    if (tone === 'casual') {
+      return "Uh oh! Quiz didn't load. Want me to try again?"
+    } else if (tone === 'formal') {
+      return 'Quiz generation failed. Would you like to retry?'
+    } else {
+      return 'Failed to generate quiz. Please try again.'
+    }
   } else {
-    return `Perfect ${profile.name}!\n\nI've learned your style - you like ${style.complexity} explanations delivered through ${style.explanationStyle}. I'll keep things ${style.tone} but informative.\n\nReady to start? I can help with:\n\n→ AI coaching and explanations\n→ Custom practice quizzes\n\nWhat interests you most?`;
+    if (tone === 'casual') {
+      return "Something's not working right. Give it another shot?"
+    } else if (tone === 'formal') {
+      return 'An error occurred. Please retry your request.'
+    } else {
+      return 'An error occurred. Please try again.'
+    }
   }
-};
+}
 
-/**
- * Generate standardized error messages based on communication style
- * Extracted from page.tsx error patterns - ~5 lines saved
- */
-// export const getErrorMessage = (profile?: UserProfile, context: 'chat' | 'quiz' | 'general' = 'general'): string => {
-//   const isCasual = profile?.communicationStyle?.tone === 'casual';
-//   const isFormal = profile?.communicationStyle?.tone === 'formal';
-  
-//   if (context === 'chat') {
-//     if (isCasual) {
-//       return 'Oops! Something went wrong. Try again?';
-//     } else if (isFormal) {
-//       return 'I apologize, but I encountered an error. Please try again.';
-//     } else {
-//       return 'Sorry, something went wrong. Please try again.';
-//     }
-//   } else if (context === 'quiz') {
-//     if (isCasual) {
-//       return "Uh oh! Quiz didn't load. Want me to try again?";
-//     } else if (isFormal) {
-//       return 'Quiz generation failed. Would you like to retry?';
-//     } else {
-//       return 'Failed to generate quiz. Please try again.';
-//     }
-//   } else {
-//     if (isCasual) {
-//       return "Something's not working right. Give it another shot?";
-//     } else if (isFormal) {
-//       return 'An error occurred. Please retry your request.';
-//     } else {
-//       return 'An error occurred. Please try again.';
-//     }
-//   }
-// };
+// Alias for backward compatibility
+export const getErrorMessage = getAPIErrorMessage
 
 /**
  * Generate fallback message when certification content fails to load
@@ -143,4 +136,19 @@ export const getFallbackMessage = (certification: string, profile?: UserProfile)
 // 🎯 Generate initial chat message for certification selection
 export const getInitialChatMessage = (certification: string): string => {
   return `Great choice! I'll help you study for ${certification}. What would you like to learn about?`
+}
+
+// 🎯 Generate completion message for quiz/study sessions
+export const getCompletionMessage = (profile: UserProfile, score?: number): string => {
+  const isCasual = profile?.communicationStyle?.tone === 'casual'
+  
+  if (score !== undefined) {
+    if (isCasual) {
+      return score >= 80 ? 'Nice job! You crushed it! 🎉' : 'Good try! Keep studying and you\'ll get there! 💪'
+    } else {
+      return score >= 80 ? 'Excellent performance! Well done.' : 'Good effort. Continue studying to improve your results.'
+    }
+  }
+  
+  return isCasual ? 'Great session! What\'s next?' : 'Session completed. How would you like to proceed?'
 }

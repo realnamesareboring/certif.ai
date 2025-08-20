@@ -18,9 +18,10 @@ interface QuizInterfaceProps {
   theme: Theme
   userProfile: UserProfile | null
   onQuizComplete?: (session: QuizSession) => void
+  onRetakeQuiz?: (certification: string, topicDetails: TopicDetails) => void  // ADD THIS
 }
 
-export default function QuizInterface({ theme, userProfile, onQuizComplete }: QuizInterfaceProps) {
+export default function QuizInterface({ theme, userProfile, onQuizComplete, onRetakeQuiz }: QuizInterfaceProps) {
   // State management
   const [quizSession, setQuizSession] = useState<QuizSession | null>(null)
   const [quizLoading, setQuizLoading] = useState(false)
@@ -179,6 +180,13 @@ export default function QuizInterface({ theme, userProfile, onQuizComplete }: Qu
     setSelectedTopicDetails(null)
   }
 
+  const handleRetakeQuiz = () => {
+    if (selectedTopicDetails && selectedCertification && onRetakeQuiz) {
+      console.log('🔄 QuizInterface: Calling parent onRetakeQuiz...')
+      onRetakeQuiz(selectedCertification, selectedTopicDetails)
+    }
+  }
+
   // Get certification by provider for organization
   const azureCerts = getCertificationsByProvider('Microsoft')
   const awsCerts = getCertificationsByProvider('AWS')
@@ -190,6 +198,7 @@ export default function QuizInterface({ theme, userProfile, onQuizComplete }: Qu
       <QuizResults
         quizSession={quizSession}
         onResetQuiz={resetQuiz}
+        onRetakeQuiz={handleRetakeQuiz}  // ADD THIS LIN
         theme={theme}
       />
     )

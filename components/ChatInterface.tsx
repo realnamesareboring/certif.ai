@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import type { ChatMessage, UserProfile, Theme } from '../types'
-import { sendMessageToAPI, getAPIErrorMessage } from '../lib/utils/api-utils'
-// import { getAPErrorMessage } from '../lib/utils/message-utils'
+import { sendMessageToAPI } from '../lib/utils/api-utils'
+import { getAPIErrorMessage } from '../lib/utils/message-utils'
 import { formatMessageContent } from '../lib/utils/ui-utils'
 
 interface ChatInterfaceProps {
@@ -85,75 +85,61 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (userProfile?.communicationStyle?.tone === 'casual') {
       return "Ask me anything about cloud stuff..."
     } else if (userProfile?.communicationStyle?.tone === 'formal') {
-      return "Please ask your cloud certification question..."
+      return "Please enter your question about certification topics..."
     } else {
-      return "Ask me about cloud certifications..."
+      return "Ask me about your certification..."
     }
   }
 
-  // Main message sending logic
+  // Send message function with proper error handling
   const sendMessage = async () => {
-    if (!input.trim() || isLoading || disabled) return
+    if (!input.trim() || isLoading) return
 
-    // Create user message
-    const userMessage: ChatMessage = { role: 'user', content: input.trim() }
-    const newMessages = [...messages, userMessage]
-    
-    // Update UI immediately
-    onMessagesUpdate(newMessages)
+    const userMessage = input.trim()
     setInput('')
     setIsLoading(true)
 
-    try {
-      // Send to API using existing utility
-      const aiResponse = await sendMessageToAPI(newMessages, userProfile)
-      
-      // Add AI response
-      const aiMessage: ChatMessage = { role: 'assistant', content: aiResponse }
-      onMessagesUpdate([...newMessages, aiMessage])
+    // Add user message to chat
+    const newMessages = [...messages, { role: 'user' as const, content: userMessage }]
+    onMessagesUpdate(newMessages)
 
+    try {
+      const response = await sendMessageToAPI(newMessages, userProfile)
+      onMessagesUpdate([
+        ...newMessages,
+        { role: 'assistant' as const, content: response }
+      ])
     } catch (error) {
       console.error('Chat error:', error)
-      
-      // Generate appropriate error message based on user's communication style
-      const errorContent = userProfile 
-        ? getErrorMessage(userProfile, 'chat')
-        : 'I apologize, but I encountered an error. Please try again.'
-      
-      const errorMessage: ChatMessage = { 
-        role: 'assistant', 
-        content: errorContent
-      }
-      
-      onMessagesUpdate([...newMessages, errorMessage])
+      const errorMessage = getAPIErrorMessage(userProfile, 'chat')
+      onMessagesUpdate([
+        ...newMessages,
+        { role: 'assistant' as const, content: errorMessage }
+      ])
     } finally {
       setIsLoading(false)
-      // Re-focus input for better UX
-      setTimeout(() => textareaRef.current?.focus(), 100)
     }
   }
 
-  // Get theme-appropriate styling classes
-  const getThemeClasses = () => ({
-    container: theme === 'dark' ? 'bg-gray-800' : 'bg-white',
+  // Theme classes for consistent styling  
+  const themeClasses = {
+    container: theme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200',
     messagesArea: theme === 'dark' ? 'bg-gray-800' : 'bg-white',
-    userMessage: 'bg-blue-500 text-white',
-    aiMessage: theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800',
-    inputArea: theme === 'dark' ? 'border-gray-700' : 'border-gray-200',
+    userMessage: theme === 'dark' ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white',
+    aiMessage: theme === 'dark' ? 'bg-gray-700 text-gray-100' : 'bg-gray-100 text-gray-800',
+    inputArea: theme === 'dark' ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-white',
     input: theme === 'dark' 
       ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-      : 'bg-white border-gray-300 text-gray-900',
-    loadingDots: theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'
-  })
-
-  const themeClasses = getThemeClasses()
+      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500',
+    loadingDots: theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
+  }
 
   return (
-    <div className={`rounded-lg shadow-lg overflow-hidden ${themeClasses.container}`}>
-      {/* Messages Area */}
+    <div className={`border rounded-lg ${themeClasses.container}`}>
+      {/* Messages Display Area with fixed height and scroll */}
       <div 
         ref={messagesContainerRef}
-        className="h-96 overflow-y-auto p-6 space-y-4"
+        className={`max-h-96 overflow-y-auto p-4 space-y-3 ${themeClasses.messagesArea}`}
       >
         {messages.map((message, index) => (
           <div
@@ -211,7 +197,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             className={`flex-1 border rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${themeClasses.input}`}
             rows={2}
             disabled={isLoading || disabled}
-            maxLength={2000} // Prevent overly long messages
+            maxLength={2000}
           />
           <button
             onClick={sendMessage}

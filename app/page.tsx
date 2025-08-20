@@ -348,19 +348,31 @@ const generateTopicQuiz = async (certification: string, topicDetails: any) => {
 }
 
 // Replace your current handleRetakeQuiz with this:
-const handleRetakeQuiz = () => {
-  console.log('🔄 Starting retake with immediate feedback...')
+const handleRetakeQuiz = (certification: string, topicDetails: any) => {
+  console.log('🔄 app/page.tsx: Starting retake quiz...')
+  console.log('📋 Topic details:', topicDetails)
   
-  // 1. ✅ IMMEDIATE FEEDBACK - Clear results screen right away
-  setQuizSession(null)    // Removes results screen immediately
-  setQuizLoading(true)    // Shows loading spinner immediately
+  // 1. Clear current quiz session (removes results screen)
+  setQuizSession(null)
+  setQuizLoading(true)
   
-  // 2. ✅ GENERATE NEW QUIZ - Small delay for smooth UX
+  // 2. Scroll to quiz section
   setTimeout(() => {
-    if (selectedTopicDetails && selectedCertification) {
-      generateTopicQuiz(selectedCertification, selectedTopicDetails)
+    if (quizSectionRef.current) {
+      quizSectionRef.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      })
+      console.log('📜 Scrolled to quiz section')
     }
   }, 100)
+
+  // Generate new quiz
+  setTimeout(async () => {
+    if (selectedTopicDetails && selectedCertification) {
+      await generateTopicQuiz(selectedCertification, selectedTopicDetails)
+    }
+  }, 200)
 }
 
 // 🛡️ Initialize session (add this to your existing useEffect or call it separately)
