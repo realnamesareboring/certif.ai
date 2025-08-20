@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ChevronRight, BookOpen, Target, Trophy, Brain, User, MessageSquare, FileText, Sun, Moon, ExternalLink, DollarSign, Clock, Award } from 'lucide-react'
 import { MULTI_CLOUD_CERTIFICATIONS_2025, getCertificationsByProvider, type Certification } from '../lib/certifications'
 import { startNewSession, canSendMessage, recordMessage, canGenerateQuiz, recordQuiz } from '../lib/sessionManager'
@@ -9,7 +9,6 @@ import { calculateQuizMetrics } from '../lib/utils/quiz-utils'
 import { 
   getWelcomeBackMessage,
   getCertificationWelcomeMessage, 
-  // getErrorMessage,
   getInitialChatMessage,
   getCompletionMessage
 } from '../lib/utils/message-utils'
@@ -73,65 +72,8 @@ export default function EnhancedPersonalizedCoach() {
   const [availableTopics, setAvailableTopics] = useState([])
   const [certificationContent, setCertificationContent] = useState(null)
 
-// 🎯 SIMPLE: Just replace your useEffect on line 243 with this
-// Use effect for time management
-// useEffect(() => {
-//   const checkSession = () => {
-//     let session = localStorage.getItem('currentSession')
-    
-//     // Create session if none exists
-//     if (!session) {
-//       const newSession = {
-//         sessionId: `session_${Date.now()}`,
-//         startTime: Date.now(),
-//         lastActivity: Date.now(),
-//         messageCount: 0,
-//         quizCount: 0
-//       }
-//       localStorage.setItem('currentSession', JSON.stringify(newSession))
-//       session = JSON.stringify(newSession)
-//       console.log('🟢 New session created')
-//     }
-    
-//     // Update UI with session timing
-//     try {
-//       const { startTime } = JSON.parse(session)
-//       const elapsed = Date.now() - startTime
-//       const remaining = (45 * 60 * 1000) - elapsed // 45 minutes
-//       setTimeLeft(Math.max(0, remaining))
-//       setSessionStatus('🟢 Active')
-//     } catch (error) {
-//       console.error('Session error:', error)
-//       setSessionStatus('🔴 Error')
-//       setTimeLeft(0)
-//     }
-//   }
-  
-//   checkSession()
-    
-//   const interval = setInterval(checkSession, 60000)
-//   return () => clearInterval(interval)
-// }, [])
-
-
-  // Load user profile and theme on component mount
-// useEffect(() => {
-//   const savedProfile = loadUserProfile()  // from session-utils
-//   const savedTheme = initializeTheme(setTheme)  // from ui-utils (already imported)
-  
-//   if (savedProfile) {
-//     setUserProfile(savedProfile)
-//     if (savedProfile.isOnboarded) {
-//       setMessages([{
-//         role: 'assistant',
-//         content: getWelcomeBackMessage(savedProfile)
-//       }])
-//     }
-//   } else {
-//     setIsOnboarding(true)
-//   }
-// }, [])
-
+  // Add this near your other refs
+  const quizSectionRef = useRef<HTMLDivElement>(null)
 
 useEffect(() => {
   console.log('🚀 Initializing app...')
@@ -192,15 +134,23 @@ useEffect(() => {
 
 useEffect(() => {
   if (selectedTopicDetails) {
-    console.log('🎯 Preventing quiz domain scroll jump')
-    const currentScrollY = window.scrollY
+    console.log('🎯 Enhanced scroll attempt...')
     
-    requestAnimationFrame(() => {
-      window.scrollTo({
-        top: currentScrollY,
-        behavior: 'auto'
-      })
-    })
+    // Try after small delay to let component render
+    setTimeout(() => {
+      if (quizSectionRef.current) {
+        quizSectionRef.current.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'start'
+        })
+      } else {
+        // Fallback: find by data attribute
+        const element = document.querySelector('[data-quiz-section="true"]')
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }
+    }, 150)
   }
 }, [selectedTopicDetails])
 
@@ -275,74 +225,6 @@ const loadCertificationContent = async (certificationId: string) => {
     }
     setActiveTab(tab)
   }
-
-
-// ADD this new function:
-// REPLACE your getCertificationWelcomeMessage function with this:
-
-// const getCertificationWelcomeMessage = (profile, officialContent) => {
-//   const certName = profile.targetCertification
-//   const style = profile.communicationStyle
-  
-//   // Get the CORRECT topics from official Microsoft Learn content
-//   const getOfficialTopics = () => {
-//     if (!officialContent?.domains) {
-//       return ["• General certification topics", "• Practice questions", "• Study guidance"]
-//     }
-    
-//     return officialContent.domains.slice(0, 3).map(domain => 
-//       `• ${domain.name} (${domain.weight})`
-//     )
-//   }
-
-//   const topics = getOfficialTopics()
-  
-//   if (style?.tone === 'casual') {
-//     return `Yo! Welcome to your ${certName} study squad! 🚀
-
-// I've loaded all the official Microsoft Learn content for ${certName}, so we're gonna crush this exam together!
-
-// I'm ur dedicated ${certName} tutor now - ask me anything about:
-// ${topics.join('\n')}
-
-// Ready to get started? What part of ${certName} do u wanna dive into first?`
-//   } else if (style?.tone === 'formal') {
-//     return `Welcome to your dedicated ${certName} preparation program.
-
-// I have successfully integrated the complete Microsoft Learn curriculum for ${certName}, including:
-
-// • Official exam objectives and domains
-// • Key terminology and concepts  
-// • Practice scenarios and examples
-// • Study guidance and tips
-
-// Your ${certName} exam covers these main areas:
-// ${topics.join('\n')}
-
-// I will serve as your specialized ${certName} instructor, adapting all explanations to your preferred learning style.
-
-// How would you like to begin your ${certName} preparation?`
-//   } else {
-//     return `Welcome to your personalized ${certName} study experience!
-
-// I've loaded the complete Microsoft Learn content for ${certName} and I'm ready to be your dedicated tutor. Every explanation will be tailored to your communication style.
-
-// The ${certName} exam focuses on:
-// ${topics.join('\n')}
-
-// Let's start mastering ${certName}! What topic would you like to explore first?`
-//   }
-// }
-
-// ==========================================
-// 🛡️ APPEND THIS TO THE BOTTOM OF YOUR page.tsx
-// (Before the final closing brace and export)
-// ==========================================
-
-// 1. ADD THE IMPORT AT THE TOP (just add this one line to your existing imports)
-// import { startNewSession, canSendMessage, recordMessage, canGenerateQuiz, recordQuiz } from '../lib/sessionManager'
-
-// 2. APPEND THESE FUNCTIONS TO THE BOTTOM (before the final return statement)
 
 // 🛡️ Protected wrapper for your existing sendMessage function
 const sendMessageProtected = async () => {
@@ -502,41 +384,6 @@ const testSessionLimits = () => {
   console.log('Message check:', canSendMessage())
   console.log('Quiz check:', canGenerateQuiz())
 }
-
-
-  // const generateQuiz = async (certification: string, domain: string) => {
-  //   setQuizLoading(true)
-  //   try {
-  //     const response = await fetch('/api/generate-quiz', {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({ 
-  //         certification,
-  //         domain,
-  //         questionCount: 10,
-  //         userProfile: userProfile?.communicationStyle
-  //       }),
-  //     })
-
-  //     if (!response.ok) throw new Error('Failed to generate quiz')
-  //     const data = await response.json()
-      
-  //     setQuizSession({
-  //       certification,
-  //       domain,
-  //       questions: data.questions,
-  //       currentQuestion: 0,
-  //       answers: new Array(data.questions.length).fill(null),
-  //       score: 0,
-  //       completed: false
-  //     })
-
-  //   } catch (error) {
-  //     console.error('Quiz generation error:', error)
-  //   } finally {
-  //     setQuizLoading(false)
-  //   }
-  // }
 
   const answerQuestion = (answerIndex: number) => {
     if (!quizSession) return
@@ -725,7 +572,9 @@ const testSessionLimits = () => {
 {/* Enhanced Microsoft Learn Topics Interface */}
 {activeTab === 'quiz' && !quizSession && (
   <div className="space-y-6">
-    <div className={`text-center p-8 rounded-lg ${
+    <div 
+      ref={quizSectionRef} 
+      className={`text-center p-8 rounded-lg ${
       theme === 'dark' ? 'bg-gray-800' : 'bg-white'
     } shadow-lg`}>
       <Target className="w-16 h-16 mx-auto mb-4 text-blue-500" />
