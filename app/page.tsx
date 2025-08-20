@@ -465,13 +465,20 @@ const generateTopicQuiz = async (certification: string, topicDetails: any) => {
   }
 }
 
+// Replace your current handleRetakeQuiz with this:
 const handleRetakeQuiz = () => {
-  console.log('🔄 Simple retake...')
+  console.log('🔄 Starting retake with immediate feedback...')
   
-  if (selectedTopicDetails && selectedCertification) {
-    // Just call the normal generation function - no fancy logic
-    generateTopicQuiz(selectedCertification, selectedTopicDetails)
-  }
+  // 1. ✅ IMMEDIATE FEEDBACK - Clear results screen right away
+  setQuizSession(null)    // Removes results screen immediately
+  setQuizLoading(true)    // Shows loading spinner immediately
+  
+  // 2. ✅ GENERATE NEW QUIZ - Small delay for smooth UX
+  setTimeout(() => {
+    if (selectedTopicDetails && selectedCertification) {
+      generateTopicQuiz(selectedCertification, selectedTopicDetails)
+    }
+  }, 100)
 }
 
 // 🛡️ Initialize session (add this to your existing useEffect or call it separately)
