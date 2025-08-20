@@ -118,21 +118,6 @@ const OnboardingComponent: React.FC<OnboardingProps> = ({
         ? 'bg-gradient-to-br from-gray-900 to-gray-800' 
         : 'bg-gradient-to-br from-blue-50 to-indigo-100'
     }`}>
-      {/* Theme Toggle */}
-      <div className="fixed top-4 right-4 z-50">
-        <button
-          onClick={onThemeToggle}
-          className={`p-3 rounded-full transition-colors ${
-            theme === 'dark' 
-              ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400' 
-              : 'bg-white hover:bg-gray-50 text-gray-600 shadow-lg'
-          }`}
-          title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-        </button>
-      </div>
-
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Enhanced Onboarding Flow */}
         <div className={`max-w-2xl mx-auto rounded-lg shadow-lg p-8 ${
